@@ -7,3 +7,4 @@
 - 2026-05-05 · @nadeera · docs(api): API surface plan v0 (41 endpoints)
 - 2026-05-07 · @rashandi · docs(db): ERD v0 frozen — 19 tables
 - 2026-05-11 · @rashandi · docs(ux): low-fi wireframes — login, catalogue, buyer dashboard
+- 2026-05-11 · @rashandi · docs(ux): admin + finance + delivery wireframes
