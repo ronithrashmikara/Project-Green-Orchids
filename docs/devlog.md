@@ -9,3 +9,4 @@
 - 2026-05-11 · @rashandi · docs(ux): low-fi wireframes — login, catalogue, buyer dashboard
 - 2026-05-11 · @rashandi · docs(ux): admin + finance + delivery wireframes
 - 2026-05-11 · @ronith · docs: RBAC role × permission matrix (5 roles, 44 permissions)
+- 2026-05-12 · @nadeera · docs(api): endpoint contract doc served at /docs
