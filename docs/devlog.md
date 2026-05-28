@@ -27,3 +27,4 @@
 - 2026-05-26 · @nadeera · chore(seed): roles + permissions + 5 demo users
 - 2026-05-27 · @nadeera · chore(seed): products, suppliers, categories, buyer tiers (faker 42)
 - 2026-05-28 · @nadeera · chore(seed): 12 trade buyers w/ tiers + credit limits
+- 2026-05-28 · @sithum · docs(arch): price-change governance — 2/24h, 3rd needs approval
