@@ -1,0 +1,16 @@
+const { Router } = require('express');
+const c = require('./reports.controller');
+const { requireAuth } = require('../../middleware/auth');
+const { requirePermission } = require('../../middleware/rbac');
+const { reportLimiter } = require('../../middleware/rateLimit');
+const r = Router();
+r.use(requireAuth, requirePermission('ADMIN', 'SALES_MANAGER', 'FINANCE_MANAGER'), reportLimiter);
+r.get('/sales-trend', c.salesTrend);
+r.get('/category-performance', c.categoryPerformance);
+r.get('/top-products', c.topProducts);
+r.get('/buyer-behaviour', c.buyerBehaviour);
+r.get('/credit-risk', c.creditRisk);
+r.get('/inventory-turnover', c.inventoryTurnover);
+r.get('/supplier-contribution', c.supplierContribution);
+r.get('/returns-analytics', c.returnsAnalytics);
+module.exports = r;
