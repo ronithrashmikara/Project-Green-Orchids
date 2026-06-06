@@ -1,0 +1,15 @@
+const { Router } = require('express');
+const c = require('./suppliers.controller');
+const { requireAuth } = require('../../middleware/auth');
+const { requirePermission } = require('../../middleware/rbac');
+const { validate } = require('../../middleware/validate');
+const { createSchema, updateSchema } = require('./suppliers.schema');
+const r = Router();
+r.use(requireAuth, requirePermission('ADMIN', 'INVENTORY_MANAGER', 'SALES_MANAGER'));
+r.get('/', c.list);
+r.post('/', validate({ body: createSchema }), c.create);
+r.get('/:id', c.get);
+r.patch('/:id', validate({ body: updateSchema }), c.update);
+r.delete('/:id', c.remove);
+r.get('/:id/products', c.products);
+module.exports = r;
