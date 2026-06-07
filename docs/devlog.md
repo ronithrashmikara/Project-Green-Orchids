@@ -17,3 +17,19 @@
 - 2026-05-20 · @rashandi · docs(db): ERD v1 final + data-dictionary.md
 - 2026-05-21 · @ronith · docs: scope locked 22 May — must-have list, sacrifice order
 - 2026-05-22 · @rashandi · docs(ux): wireframes v2 signed off
+- 2026-05-23 · @ronith · docs: user stories US-01..US-58 grouped by role
+- 2026-05-24 · @rashandi · docs(ux): role-based navigation maps (5 dashboards)
+- 2026-05-25 · @nadeera · docs(arch): state machines — RFQ, order, invoice, payment, RMA, delivery
+- 2026-05-25 · @sithum · docs(arch): money handling — decimal.js, round-half-up, no floats
+- 2026-05-25 · @sithum · test(api): money.js 14 cases (rounding, negative) green
+- 2026-05-26 · @sithum · docs(security): threat model — IDOR, SQLi, brute-force, price tamper
+- 2026-05-26 · @sithum · chore(seed): roles + permissions matrix (seed 44 perms)
+- 2026-05-26 · @nadeera · chore(seed): roles + permissions + 5 demo users
+- 2026-05-27 · @nadeera · chore(seed): products, suppliers, categories, buyer tiers (faker 42)
+- 2026-05-28 · @nadeera · chore(seed): 12 trade buyers w/ tiers + credit limits
+- 2026-05-28 · @sithum · docs(arch): price-change governance — 2/24h, 3rd needs approval
+- 2026-05-29 · @ronith · chore: freeze develop for branch-out (lock pinned, CI green)
+- 2026-05-29 · @ronith · chore: branch from develop
+- 2026-06-01 · @ronith · ci: per-branch preview deploys + healthz smoke test
+- 2026-06-05 · @ronith · ci: add jest coverage gate (>60% on changed modules)
+- 2026-06-07 · @ronith · ci: seed demo DB on staging, golden-path smoke (login ×5 roles)

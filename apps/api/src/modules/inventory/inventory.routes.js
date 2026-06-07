@@ -1,0 +1,12 @@
+const { Router } = require('express');
+const c = require('./inventory.controller');
+const { requireAuth } = require('../../middleware/auth');
+const { requirePermission } = require('../../middleware/rbac');
+const { validate } = require('../../middleware/validate');
+const { ackSchema } = require('./inventory.schema');
+const r = Router(); r.use(requireAuth, requirePermission('ADMIN', 'INVENTORY_MANAGER', 'WAREHOUSE_MANAGER'));
+r.get('/movements', c.movements);
+r.get('/alerts', c.alerts);
+r.patch('/alerts/:id/ack', validate({ body: ackSchema }), c.ackAlert);
+r.get('/summary', c.summary);
+module.exports = r;
