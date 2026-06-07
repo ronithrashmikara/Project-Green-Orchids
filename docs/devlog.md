@@ -29,7 +29,4 @@
 - 2026-05-28 · @nadeera · chore(seed): 12 trade buyers w/ tiers + credit limits
 - 2026-05-28 · @sithum · docs(arch): price-change governance — 2/24h, 3rd needs approval
 - 2026-05-29 · @ronith · chore: freeze develop for branch-out (lock pinned, CI green)
-- 2026-05-29 · @nadeera · chore: branch from develop
-- 2026-06-05 · @nadeera · db: low_stock_alerts — collides with auth 031 (I-02), renumber after rebase
-- 2026-06-06 · @nadeera · chore: merge develop → branch, resolve middleware registration conflict (I-06)
-- 2026-06-06 · @nadeera · chore: recover from upstream rebase — reset --hard + cherry-pick (I-05)
+- 2026-05-29 · @yasali · chore: branch from develop
