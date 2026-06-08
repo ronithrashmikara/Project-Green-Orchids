@@ -33,3 +33,4 @@
 - 2026-06-05 · @nadeera · db: low_stock_alerts — collides with auth 031 (I-02), renumber after rebase
 - 2026-06-06 · @nadeera · chore: merge develop → branch, resolve middleware registration conflict (I-06)
 - 2026-06-06 · @nadeera · chore: recover from upstream rebase — reset --hard + cherry-pick (I-05)
+- 2026-06-08 · @nadeera · chore: add sample product images to repo (+22 MB) (I-09)
