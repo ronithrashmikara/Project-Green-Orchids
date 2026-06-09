@@ -31,3 +31,4 @@
 - 2026-05-29 · @ronith · chore: freeze develop for branch-out (lock pinned, CI green)
 - 2026-05-29 · @rashandi · chore: branch from develop
 - 2026-06-04 · @rashandi · docs(ux): finance + RMA screen specs, every state drawn
+- 2026-06-09 · @rashandi · docs(ux): aging-report + statement layout finalised
