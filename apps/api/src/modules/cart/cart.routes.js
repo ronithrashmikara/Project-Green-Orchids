@@ -1,0 +1,13 @@
+const { Router } = require('express');
+const c = require('./cart.controller');
+const { requireAuth, requireApprovedBuyer } = require('../../middleware/auth');
+const { validate } = require('../../middleware/validate');
+const { addItemSchema, updateItemSchema } = require('./cart.schema');
+const r = Router();
+r.use(requireAuth, requireApprovedBuyer);
+r.get('/', c.get);
+r.post('/items', validate({ body: addItemSchema }), c.addItem);
+r.put('/items/:productId', validate({ body: updateItemSchema }), c.updateItem);
+r.delete('/items/:productId', c.removeItem);
+r.delete('/', c.clear);
+module.exports = r;
