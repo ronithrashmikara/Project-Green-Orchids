@@ -30,3 +30,4 @@
 - 2026-05-28 · @sithum · docs(arch): price-change governance — 2/24h, 3rd needs approval
 - 2026-05-29 · @ronith · chore: freeze develop for branch-out (lock pinned, CI green)
 - 2026-05-29 · @yasali · chore: branch from develop
+- 2026-06-10 · @sithum · feat(rfq): validation + state machine guards
