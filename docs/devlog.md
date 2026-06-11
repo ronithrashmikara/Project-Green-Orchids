@@ -32,3 +32,4 @@
 - 2026-05-29 · @rashandi · chore: branch from develop
 - 2026-06-04 · @rashandi · docs(ux): finance + RMA screen specs, every state drawn
 - 2026-06-09 · @rashandi · docs(ux): aging-report + statement layout finalised
+- 2026-06-11 · @sithum · feat(invoices): money math + invoice number sequence
