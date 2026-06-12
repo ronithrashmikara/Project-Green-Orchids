@@ -1,0 +1,11 @@
+const { Router } = require('express');
+const c = require('./payments.controller');
+const { requireAuth } = require('../../middleware/auth');
+const { requirePermission } = require('../../middleware/rbac');
+const { validate } = require('../../middleware/validate');
+const { createSchema, reverseSchema } = require('./payments.schema');
+const r = Router();
+r.post('/', requireAuth, requirePermission('ADMIN', 'FINANCE_MANAGER', 'BUYER'), validate({ body: createSchema }), c.create);
+r.post('/:id/reverse', requireAuth, requirePermission('ADMIN', 'FINANCE_MANAGER'), validate({ body: reverseSchema }), c.reverse);
+r.post('/payhere/notify', c.payhereNotify);
+module.exports = r;
