@@ -37,3 +37,4 @@
 - 2026-06-08 · @ronith · chore: migrate images to Git LFS, purge blobs from pack (I-09)
 - 2026-06-09 · @nadeera · db: price_change_requests (folded into 0005)
 - 2026-06-12 · @nadeera · test(pricing): governance + bulk-tier integration (11 green)
+- 2026-06-13 · @nadeera · chore: rebase onto develop, regenerate package-lock
