@@ -32,3 +32,4 @@
 - 2026-05-29 · @yasali · chore: branch from develop
 - 2026-06-10 · @sithum · feat(rfq): validation + state machine guards
 - 2026-06-12 · @yasali · test(rfq): e2e RFQ→quote→accept→convert + expired-reject (7 green)
+- 2026-06-13 · @yasali · chore: merge develop → branch, resolve seed.js conflict (I-11)
