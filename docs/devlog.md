@@ -35,3 +35,4 @@
 - 2026-06-11 · @sithum · feat(invoices): money math + invoice number sequence
 - 2026-06-11 · @rashandi · db: invoices + adjustments (folded into 0006)
 - 2026-06-12 · @sithum · feat(payments): payment.record txn (FOR UPDATE invoice, audit row)
+- 2026-06-14 · @rashandi · chore: rebase onto develop (post-RFQ), regenerate lock
