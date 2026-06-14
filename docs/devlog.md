@@ -29,8 +29,10 @@
 - 2026-05-28 · @nadeera · chore(seed): 12 trade buyers w/ tiers + credit limits
 - 2026-05-28 · @sithum · docs(arch): price-change governance — 2/24h, 3rd needs approval
 - 2026-05-29 · @ronith · chore: freeze develop for branch-out (lock pinned, CI green)
-- 2026-05-29 · @ronith · chore: branch from develop
-- 2026-06-01 · @ronith · ci: per-branch preview deploys + healthz smoke test
-- 2026-06-05 · @ronith · ci: add jest coverage gate (>60% on changed modules)
-- 2026-06-12 · @ronith · feat(reports): sales + inventory + credit cards wired to real queries
-- 2026-06-13 · @ronith · revert: "merge PR #22" — cron import broke api boot (I-10)
+- 2026-05-29 · @rashandi · chore: branch from develop
+- 2026-06-04 · @rashandi · docs(ux): finance + RMA screen specs, every state drawn
+- 2026-06-09 · @rashandi · docs(ux): aging-report + statement layout finalised
+- 2026-06-11 · @sithum · feat(invoices): money math + invoice number sequence
+- 2026-06-11 · @rashandi · db: invoices + adjustments (folded into 0006)
+- 2026-06-12 · @sithum · feat(payments): payment.record txn (FOR UPDATE invoice, audit row)
+- 2026-06-14 · @rashandi · chore: rebase onto develop (post-RFQ), regenerate lock
