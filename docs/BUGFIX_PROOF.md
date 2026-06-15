@@ -99,3 +99,10 @@ Due date computed from the buyer trade_account payment_term mapped to days in As
 **Files:** payments.service.js · payments.repository.js
 
 Notify resolves OUR invoice from the PayHere order ref; method ONLINE; bad signatures audited+ignored; duplicates caught by UNIQUE(invoice_id,method,reference).
+
+### 14. Governed price change took no lock and wrote no price_history
+
+**Severity:** P1 · **Status:** FIXED
+**Files:** products.service.js · pricing.service.js
+
+changePrice runs in a txn with SELECT … FOR UPDATE, re-counts the rolling 24h window from price_history, rejects same-price no-ops, writes history atomically; approval re-locks and verifies current price.
