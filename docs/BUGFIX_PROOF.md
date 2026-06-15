@@ -15,3 +15,10 @@ Areas: A. Schema vs code (8) · B. Money & invoice (5) · C. Price governance (2
 **Files:** products.service.js · pricing.service.js · pricing.repository.js
 
 Removed the phantom price_changes table. Direct changes write immutable price_history; governed changes create a price_change_requests row; approval writes price_history(source=PRICE_REQUEST).
+
+### 2. Order/credit used trade_accounts.available_credit & .tier (absent)
+
+**Severity:** P0 · **Status:** FIXED
+**Files:** orders.repository.js
+
+available_credit computed as credit_limit − unpaid invoice balances inside the locked txn; tier discount read from buyer_tiers.discount_rate via tier_id. Hard-coded TIER_* map deleted.
