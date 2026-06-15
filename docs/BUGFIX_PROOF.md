@@ -57,3 +57,10 @@ Reversal detected via reversed_at; a second reversal throws ALREADY_REVERSED.
 **Files:** orders.repository.js · orders.service.js
 
 Reservation bumps reserved_qty (stock_qty intact); availability = stock_qty − reserved_qty on FOR UPDATE rows; dispatch converts the reservation.
+
+### 8. State-machine names didn't match DB enums (every approval 409'd)
+
+**Severity:** P0 · **Status:** FIXED
+**Files:** utils/stateMachine.js · orders.service.js · migration 0009
+
+Machine states renamed to exact DB enums (PENDING_APPROVAL…); confirm-receipt is DELIVERED→CLOSED; unit test asserts every ORDER state is in the DB CHECK list.
