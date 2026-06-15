@@ -36,3 +36,10 @@ Cart items joined through carts (cart_items.cart_id → carts.buyer_id); availab
 **Files:** orders.repository.js
 
 Every INSERT/SELECT mapped to the real migration columns (order_no/total/source, qty/unit_price_at_order/price_source, invoice_no, stock_movements qty/ref_table/ref_id/performed_by).
+
+### 5. Invalid CHECK enum values written at runtime
+
+**Severity:** P0 · **Status:** FIXED
+**Files:** orders.repository.js · payments.service.js · migration 0009
+
+Invoice status uses PENDING; online payments use ONLINE; reservations use ORDER_RESERVE/ORDER_RELEASE. 0009 adds CLOSED/ADJUSTED/ACCEPTED/CONFIRMED.
