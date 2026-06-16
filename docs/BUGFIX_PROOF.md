@@ -113,3 +113,10 @@ changePrice runs in a txn with SELECT … FOR UPDATE, re-counts the rolling 24h 
 **Files:** orders.service.js
 
 Caller trade_account id resolved and compared to order.buyer_id to decide BUYER vs ADMIN.
+
+### 16. IDOR ownership compared user-id vs trade-account-id
+
+**Severity:** P1 · **Status:** FIXED
+**Files:** orders.service.js · orders.repository.js · orders.controller.js
+
+Buyer scoping resolves trade_accounts.id once (accountIdForUser); isAdmin checks the order.view.all permission, not an invented role.
