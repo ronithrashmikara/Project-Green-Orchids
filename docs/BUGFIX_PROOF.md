@@ -176,3 +176,10 @@ These run inside tx(); status change, audit row and outbox enqueue commit togeth
 **Files:** orders.service.js
 
 Conversion reads quoted_unit_price, keeps tier discount 0 for RFQ orders, and returns per-line availability warnings.
+
+### 25. Document numbering not backed by a SEQUENCE
+
+**Severity:** P2 · **Status:** FIXED
+**Files:** migration 0009
+
+order/invoice/payment number sequences created so nextval() is gap-tolerant and race-free.
