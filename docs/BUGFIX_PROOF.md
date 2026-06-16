@@ -148,3 +148,10 @@ Redaction recursive + regex (/secret|token|password|hash|api_key/i); INSERT corr
 **Files:** migration 0009
 
 price.approve removed from INVENTORY_MANAGER, restoring the ADMIN-only / two-person separation.
+
+### 21. State machine referenced roles that don't exist
+
+**Severity:** P2 · **Status:** FIXED
+**Files:** utils/stateMachine.js
+
+Invented roles replaced with real actor tokens ADMIN/BUYER/INVENTORY/FINANCE/DELIVERY/SYSTEM.
