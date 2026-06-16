@@ -134,3 +134,10 @@ Role-independent BEFORE UPDATE/DELETE triggers RAISE on audit_logs, stock_moveme
 **Files:** middleware/auth.js · buyers.service.js
 
 auth exports bustUserStatus(); suspend handler calls it so the cached ACTIVE status is dropped immediately.
+
+### 19. Audit redaction shallow; audit writer used wrong columns
+
+**Severity:** P2 · **Status:** FIXED
+**Files:** middleware/audit.js
+
+Redaction recursive + regex (/secret|token|password|hash|api_key/i); INSERT corrected to actor_id/actor_role/entity_type; writeAudit accepts a tx client.
