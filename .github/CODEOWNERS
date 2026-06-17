@@ -1,0 +1,36 @@
+# Code owners — Project Green (Group H)
+# Each area is owned by its lead; review requests auto-route here.
+
+# Default
+*                                   @InfiniteBloom-max
+
+# Auth, RBAC, accounts, security
+/apps/api/src/modules/auth/         @Sithum77
+/apps/api/src/modules/users/        @Sithum77
+/apps/api/src/modules/buyers/       @Sithum77
+/apps/api/src/middleware/           @Sithum77
+
+# Catalogue, inventory, pricing
+/apps/api/src/modules/products/     @darkgladiator77
+/apps/api/src/modules/inventory/    @darkgladiator77
+/apps/api/src/modules/pricing/      @darkgladiator77
+/apps/api/src/modules/suppliers/    @darkgladiator77
+
+# RFQ, cart, orders
+/apps/api/src/modules/rfq/          @Yasali13
+/apps/api/src/modules/cart/         @Yasali13
+/apps/api/src/modules/orders/       @Yasali13
+/apps/web/                          @Yasali13
+
+# Finance, invoices, RMA
+/apps/api/src/modules/invoices/     @rtwijendra
+/apps/api/src/modules/payments/     @rtwijendra
+/apps/api/src/modules/rma/          @rtwijendra
+/docs/                              @rtwijendra
+
+# Delivery, reports, platform, CI, DB
+/apps/api/src/modules/delivery/     @InfiniteBloom-max
+/apps/api/src/modules/reports/      @InfiniteBloom-max
+/apps/api/src/jobs/                 @InfiniteBloom-max
+/apps/api/migrations/               @InfiniteBloom-max @darkgladiator77
+/.github/                           @InfiniteBloom-max
