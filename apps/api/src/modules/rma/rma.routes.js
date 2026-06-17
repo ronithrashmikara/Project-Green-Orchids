@@ -1,0 +1,16 @@
+const { Router } = require('express');
+const c = require('./rma.controller');
+const { requireAuth, requireApprovedBuyer } = require('../../middleware/auth');
+const { requirePermission } = require('../../middleware/rbac');
+const { validate } = require('../../middleware/validate');
+const { createSchema, rejectSchema, receiveSchema, resolveSchema } = require('./rma.schema');
+const r = Router(); r.use(requireAuth);
+r.post('/', requireApprovedBuyer, validate({ body: createSchema }), c.create);
+r.get('/', c.list);
+r.get('/:id', c.get);
+r.patch('/:id/review', requirePermission('ADMIN', 'SUPPORT_MANAGER'), c.review);
+r.patch('/:id/approve', requirePermission('ADMIN', 'SUPPORT_MANAGER'), c.approve);
+r.patch('/:id/reject', requirePermission('ADMIN', 'SUPPORT_MANAGER'), validate({ body: rejectSchema }), c.reject);
+r.patch('/:id/receive', requirePermission('ADMIN', 'WAREHOUSE_MANAGER'), validate({ body: receiveSchema }), c.receive);
+r.patch('/:id/resolve', requirePermission('ADMIN', 'SUPPORT_MANAGER'), validate({ body: resolveSchema }), c.resolve);
+module.exports = r;

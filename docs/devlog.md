@@ -29,11 +29,12 @@
 - 2026-05-28 · @nadeera · chore(seed): 12 trade buyers w/ tiers + credit limits
 - 2026-05-28 · @sithum · docs(arch): price-change governance — 2/24h, 3rd needs approval
 - 2026-05-29 · @ronith · chore: freeze develop for branch-out (lock pinned, CI green)
-- 2026-05-29 · @sithum · chore: branch from develop
-- 2026-06-02 · @sithum · chore(api): add .env.example (placeholders) + ensure .env ignored
-- 2026-06-03 · @sithum · test(rbac): 11 permission-matrix cases (allow/deny per role) green
-- 2026-06-06 · @sithum · chore: rebase onto develop, resolve package-lock conflict (I-01)
-- 2026-06-06 · @sithum · test(auth): e2e login→refresh→revoke (6 green), coverage 71%
-- 2026-06-06 · @sithum · chore: force-push after rebase — broke @nadeera-p local (I-05)
-- 2026-06-09 · @sithum · feat(buyers): tier discount applied at price-resolution (FOR UPDATE)
-- 2026-06-09 · @sithum · test(pricing): governance — 2 ok, 3rd queued, same-price no-op (9 green)
+- 2026-05-29 · @rashandi · chore: branch from develop
+- 2026-06-04 · @rashandi · docs(ux): finance + RMA screen specs, every state drawn
+- 2026-06-09 · @rashandi · docs(ux): aging-report + statement layout finalised
+- 2026-06-11 · @sithum · feat(invoices): money math + invoice number sequence
+- 2026-06-11 · @rashandi · db: invoices + adjustments (folded into 0006)
+- 2026-06-12 · @sithum · feat(payments): payment.record txn (FOR UPDATE invoice, audit row)
+- 2026-06-14 · @rashandi · chore: rebase onto develop (post-RFQ), regenerate lock
+- 2026-06-16 · @sithum · feat(rma): approved return increments stock + invoice_adjustment
+- 2026-06-17 · @sithum · test(finance): invoice→partial→statement→aging (9 green)
