@@ -4,10 +4,10 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { Button, Input, Select } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import { Tabs } from '@/components/ui/Tabs';
 import { Table } from '@/components/ui/Table';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { StatusBadge, TierBadge } from '@/components/domain/StatusBadge';
 import { Spinner, EmptyState } from '@/components/ui/Spinner';
 import { formatDate, formatLKR } from '@/lib/utils';
@@ -23,6 +23,7 @@ export default function BuyersPage() {
   const [selectedBuyer, setSelectedBuyer] = useState(null);
   const [showApprove, setShowApprove] = useState(false);
   const [approveForm, setApproveForm] = useState({ tier: 'SILVER', creditLimit: '100000', paymentTerms: 'Net 30' });
+  const [confirm, setConfirm] = useState({ open: false, action: null, title: '', message: '', label: '', variant: 'danger' });
 
   useEffect(() => {
     setLoading(true);
@@ -50,13 +51,38 @@ export default function BuyersPage() {
     }
   };
 
-  const handleReject = async (id) => {
-    if (!confirm('Reject this buyer?')) return;
-    try {
-      await api.post(`/admin/buyers/${id}/reject`);
-      setApprovals((a) => a.filter((b) => b.id !== id));
-      toast.success('Buyer rejected');
-    } catch { toast.error('Failed'); }
+  const handleReject = (buyer) => {
+    setConfirm({
+      open: true,
+      title: 'Reject buyer',
+      message: `Reject ${buyer.businessName}? They will be notified and will need to re-apply to access the platform.`,
+      label: 'Reject',
+      variant: 'danger',
+      action: async () => {
+        try {
+          await api.post(`/admin/buyers/${buyer.id}/reject`);
+          setApprovals((a) => a.filter((b) => b.id !== buyer.id));
+          toast.success('Buyer rejected');
+        } catch { toast.error('Failed'); }
+      },
+    });
+  };
+
+  const handleArchive = (buyer) => {
+    setConfirm({
+      open: true,
+      title: 'Archive buyer account',
+      message: `Archive ${buyer.businessName}? Their account will be suspended and they will lose platform access.`,
+      label: 'Archive',
+      variant: 'warning',
+      action: async () => {
+        try {
+          await api.post(`/admin/buyers/${buyer.id}/suspend`).catch(() => api.patch(`/admin/buyers/${buyer.id}`, { status: 'SUSPENDED' }));
+          setDirectory((d) => d.map((b) => b.id === buyer.id ? { ...b, status: 'SUSPENDED' } : b));
+          toast.success('Buyer archived');
+        } catch { toast.error('Failed'); }
+      },
+    });
   };
 
   const cols = [
@@ -85,10 +111,15 @@ export default function BuyersPage() {
             { key: 'actions', label: '', render: (_, r) => (
               <div className="flex gap-2">
                 <Button size="sm" onClick={() => { setSelectedBuyer(r); setShowApprove(true); }}>Approve</Button>
-                <Button size="sm" variant="danger" onClick={() => handleReject(r.id)}>Reject</Button>
+                <Button size="sm" variant="danger" onClick={() => handleReject(r)}>Reject</Button>
               </div>
             )},
-          ] : [...cols, { key: 'actions', label: '', render: (_, r) => <Button size="sm" variant="outline" onClick={() => router.push(`/admin/buyers/${r.id}`)}>View</Button> }]}
+          ] : [...cols, { key: 'actions', label: '', render: (_, r) => (
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => router.push(`/admin/buyers/${r.id}`)}>View</Button>
+              {r.status !== 'SUSPENDED' && <Button size="sm" variant="ghost" onClick={() => handleArchive(r)}>Archive</Button>}
+            </div>
+          )}]}
           rows={tab === 'approvals' ? approvals : directory}
         />
       )}
@@ -107,6 +138,16 @@ export default function BuyersPage() {
           </div>
         )}
       </Modal>
+
+      <ConfirmDialog
+        open={confirm.open}
+        onClose={() => setConfirm((c) => ({ ...c, open: false }))}
+        onConfirm={() => confirm.action?.()}
+        title={confirm.title}
+        message={confirm.message}
+        confirmLabel={confirm.label}
+        variant={confirm.variant}
+      />
     </div>
   );
 }

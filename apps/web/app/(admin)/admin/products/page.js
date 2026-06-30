@@ -3,8 +3,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import api from '@/lib/api';
-import { Button, Input, Select } from '@/components/ui/Button';
+import { Button, Input } from '@/components/ui/Button';
 import { Table } from '@/components/ui/Table';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Spinner, EmptyState, ErrorState } from '@/components/ui/Spinner';
 import { StockBand, StatusBadge } from '@/components/domain/StatusBadge';
 import { formatLKR } from '@/lib/utils';
@@ -20,6 +21,7 @@ export default function ProductsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selected, setSelected] = useState(new Set());
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -67,6 +69,14 @@ export default function ProductsPage() {
     } catch { toast.error('Export failed'); }
   };
 
+  const handleDelete = async () => {
+    try {
+      await api.delete(`/admin/products/${deleteTarget.id}`);
+      setProducts((p) => p.filter((x) => x.id !== deleteTarget.id));
+      toast.success('Product deleted');
+    } catch { toast.error('Failed to delete'); }
+  };
+
   const cols = [
     { key: 'select', label: <input type="checkbox" onChange={(e) => setSelected(e.target.checked ? new Set(products.map((p) => p.id)) : new Set())} checked={selected.size === products.length && products.length > 0} />, render: (_, r) => <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleSelect(r.id)} /> },
     { key: 'imageUrl', label: 'Image', render: (v) => v ? <img src={v} className="w-10 h-10 object-cover rounded" /> : '🌿' },
@@ -81,6 +91,7 @@ export default function ProductsPage() {
       <div className="flex gap-1">
         <Link href={`/admin/products/${r.id}`}><Button size="sm" variant="outline">Edit</Button></Link>
         <Button size="sm" variant="ghost" onClick={() => api.post(`/admin/products/${r.id}/duplicate`).then(() => { toast.success('Duplicated'); fetchProducts(); })}>Copy</Button>
+        <Button size="sm" variant="ghost" onClick={() => setDeleteTarget(r)}>Delete</Button>
       </div>
     )},
   ];
@@ -106,6 +117,16 @@ export default function ProductsPage() {
           <Pagination page={page} totalPages={totalPages} onChange={setPage} />
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        title="Delete product"
+        message={`Delete "${deleteTarget?.name}"? All associated inventory records will also be removed. This cannot be undone.`}
+        confirmLabel="Delete"
+        variant="danger"
+      />
     </div>
   );
 }

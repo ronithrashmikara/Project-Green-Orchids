@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import { Button, Input, Textarea } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import { Table } from '@/components/ui/Table';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Spinner, EmptyState } from '@/components/ui/Spinner';
 import toast from 'react-hot-toast';
 
@@ -15,6 +15,7 @@ export default function SuppliersPage() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ name: '', contactPerson: '', email: '', phone: '', address: '', leadTime: '' });
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -46,9 +47,12 @@ export default function SuppliersPage() {
     } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Delete?')) return;
-    try { await api.delete(`/admin/suppliers/${id}`); setSuppliers((s) => s.filter((x) => x.id !== id)); toast.success('Deleted'); } catch { toast.error('Failed'); }
+  const handleDelete = async () => {
+    try {
+      await api.delete(`/admin/suppliers/${deleteTarget.id}`);
+      setSuppliers((s) => s.filter((x) => x.id !== deleteTarget.id));
+      toast.success('Deleted');
+    } catch { toast.error('Failed'); }
   };
 
   return (
@@ -69,7 +73,7 @@ export default function SuppliersPage() {
             { key: 'actions', label: '', render: (_, r) => (
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" onClick={() => openEdit(r)}>Edit</Button>
-                <Button size="sm" variant="ghost" onClick={() => handleDelete(r.id)}>Delete</Button>
+                <Button size="sm" variant="ghost" onClick={() => setDeleteTarget(r)}>Delete</Button>
               </div>
             )},
           ]}
@@ -90,6 +94,16 @@ export default function SuppliersPage() {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        title="Delete supplier"
+        message={`Delete "${deleteTarget?.name}"? This cannot be undone and may affect associated products.`}
+        confirmLabel="Delete"
+        variant="danger"
+      />
     </div>
   );
 }

@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import { Button, Input, Select } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import { Table } from '@/components/ui/Table';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { StatusBadge } from '@/components/domain/StatusBadge';
 import { Spinner, EmptyState } from '@/components/ui/Spinner';
 import { formatDate } from '@/lib/utils';
@@ -16,6 +16,7 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', role: 'INVENTORY_MANAGER', password: '' });
+  const [confirm, setConfirm] = useState({ open: false, action: null, title: '', message: '', variant: 'warning', label: '' });
 
   useEffect(() => {
     (async () => {
@@ -35,21 +36,37 @@ export default function UsersPage() {
     } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
   };
 
-  const handleDeactivate = async (id) => {
-    if (!confirm('Deactivate this user?')) return;
-    try {
-      await api.post(`/admin/users/${id}/deactivate`);
-      setUsers((u) => u.map((x) => x.id === id ? { ...x, status: 'INACTIVE' } : x));
-      toast.success('Deactivated');
-    } catch { toast.error('Failed'); }
+  const handleDeactivate = (id) => {
+    setConfirm({
+      open: true,
+      title: 'Deactivate user',
+      message: 'This user will lose access to the system immediately. You can reactivate them later.',
+      variant: 'warning',
+      label: 'Deactivate',
+      action: async () => {
+        try {
+          await api.post(`/admin/users/${id}/deactivate`);
+          setUsers((u) => u.map((x) => x.id === id ? { ...x, status: 'INACTIVE' } : x));
+          toast.success('Deactivated');
+        } catch { toast.error('Failed'); }
+      },
+    });
   };
 
-  const handleResetPassword = async (id) => {
-    if (!confirm('Send password reset to this user?')) return;
-    try {
-      await api.post(`/admin/users/${id}/reset-password`);
-      toast.success('Password reset triggered');
-    } catch { toast.error('Failed'); }
+  const handleResetPassword = (id) => {
+    setConfirm({
+      open: true,
+      title: 'Reset password',
+      message: 'A password reset email will be sent to this user. Their current password will remain active until they reset it.',
+      variant: 'info',
+      label: 'Send Reset',
+      action: async () => {
+        try {
+          await api.post(`/admin/users/${id}/reset-password`);
+          toast.success('Password reset triggered');
+        } catch { toast.error('Failed'); }
+      },
+    });
   };
 
   return (
@@ -94,6 +111,16 @@ export default function UsersPage() {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={confirm.open}
+        onClose={() => setConfirm((c) => ({ ...c, open: false }))}
+        onConfirm={() => confirm.action?.()}
+        title={confirm.title}
+        message={confirm.message}
+        confirmLabel={confirm.label}
+        variant={confirm.variant}
+      />
     </div>
   );
 }
