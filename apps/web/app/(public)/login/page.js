@@ -66,7 +66,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <p className="relative text-sm text-white/40">© {new Date().getFullYear()} K Orchids Wholesale</p>
+        <p className="relative text-sm text-white/40">© {new Date().getFullYear()} ORCHIDS Wholesale</p>
       </div>
 
       {/* Form */}

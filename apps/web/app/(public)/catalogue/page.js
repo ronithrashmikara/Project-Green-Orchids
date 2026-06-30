@@ -277,7 +277,7 @@ export default function CataloguePage() {
           ))}
         </div>
         <div className="mx-auto mt-14 flex max-w-6xl flex-col items-center justify-between gap-4 border-t border-white/10 pt-7 text-xs font-medium text-white/40 sm:flex-row">
-          <span>© {new Date().getFullYear()} K Orchids Wholesale · Colombo, Sri Lanka</span>
+          <span>© {new Date().getFullYear()} ORCHIDS Wholesale · Colombo, Sri Lanka</span>
           <span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Trade desk open</span>
         </div>
       </footer>

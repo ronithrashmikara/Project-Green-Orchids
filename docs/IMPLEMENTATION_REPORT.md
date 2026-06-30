@@ -1,4 +1,4 @@
-# PROJECT GREEN — K ORCHIDS B2B Wholesale Platform
+# PROJECT GREEN — ORCHIDS B2B Wholesale Platform
 ## Full Implementation Report
 ### Version 1.0 | 14 June 2026
 
@@ -6,7 +6,7 @@
 
 ## 1. Executive Summary
 
-This document certifies the full implementation of Project Green, the B2B intelligent wholesale trade, inventory, and supplier management platform for K ORCHIDS. The build covers **14,494 lines of code** across **265 files**, implementing all 10 strategic objectives (SO-01 through SO-10) as specified in the Full Industrial Implementation Plan v1.0.
+This document certifies the full implementation of Project Green, the B2B intelligent wholesale trade, inventory, and supplier management platform for ORCHIDS. The build covers **14,494 lines of code** across **265 files**, implementing all 10 strategic objectives (SO-01 through SO-10) as specified in the Full Industrial Implementation Plan v1.0.
 
 **Bloom Reaction™ module is explicitly excluded** per instructions — deferred to the beauty/frontend wave.
 
@@ -449,4 +449,4 @@ cd apps/web && npm run dev
 
 ---
 
-*Report generated 14 June 2026 | Project Green v1.0 | K ORCHIDS B2B Wholesale Platform*
+*Report generated 14 June 2026 | Project Green v1.0 | ORCHIDS B2B Wholesale Platform*

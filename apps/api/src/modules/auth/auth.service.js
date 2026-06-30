@@ -93,7 +93,7 @@ const authService = {
     try {
       await sendMail({
         to: email,
-        subject: 'Verify your email - K ORCHIDS',
+        subject: 'Verify your email - ORCHIDS',
         template: 'verify_email',
         data: {
           name,
@@ -274,7 +274,7 @@ const authService = {
     try {
       await sendMail({
         to: email,
-        subject: 'Reset your password - K ORCHIDS',
+        subject: 'Reset your password - ORCHIDS',
         template: 'reset_password',
         data: {
           name: user.name,
@@ -306,7 +306,7 @@ const authService = {
       const user = await authRepository.findUserById(emailToken.user_id);
       await sendMail({
         to: user.email,
-        subject: 'Password Changed - K ORCHIDS',
+        subject: 'Password Changed - ORCHIDS',
         template: 'password_changed',
         data: { name: user.name, changedAt: new Date().toISOString() },
       });

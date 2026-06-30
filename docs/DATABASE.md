@@ -1,4 +1,4 @@
-# Project Green (K ORCHIDS) — Database Reference
+# Project Green (ORCHIDS) — Database Reference
 
 PostgreSQL 18 · **38 tables** · schema in `apps/api/migrations/0001`–`0009` · access layer in `apps/api/src/modules/<domain>/*.repository.js` · runner `scripts/migrate.js` · seed `scripts/seed.js`.
 

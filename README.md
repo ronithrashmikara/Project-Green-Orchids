@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🌸 K ORCHIDS — Project Green
+# 🌸 ORCHIDS — Project Green
 
 ### B2B Wholesale Orchid Trade Platform
 
@@ -190,5 +190,5 @@ Each role logs in to their own workspace:
 ---
 
 <div align="center">
-Built with Next.js, Express, and PostgreSQL · K ORCHIDS 2026
+Built with Next.js, Express, and PostgreSQL · ORCHIDS 2026
 </div>

@@ -3,7 +3,7 @@ import { Providers } from './providers';
 
 export const metadata = {
   title: 'Project Green - Wholesale Trade',
-  description: 'B2B Wholesale Trade Platform for K ORCHIDS',
+  description: 'B2B Wholesale Trade Platform for ORCHIDS',
 };
 
 export default function RootLayout({ children }) {

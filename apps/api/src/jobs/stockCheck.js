@@ -42,7 +42,7 @@ async function stockCheck() {
         for (const admin of admins.rows) {
           await sendMail({
             to: admin.email,
-            subject: 'Low Stock Alert - K ORCHIDS',
+            subject: 'Low Stock Alert - ORCHIDS',
             template: 'low_stock_digest',
             data: { products: productsList },
           });

@@ -24,7 +24,7 @@ async function invoiceAging() {
     for (const inv of preDue.rows) {
       try {
         await sendMail({
-          to: inv.email, subject: 'Payment Reminder - K ORCHIDS', template: 'payment_reminder',
+          to: inv.email, subject: 'Payment Reminder - ORCHIDS', template: 'payment_reminder',
           data: { name: inv.name, invoiceNumber: inv.invoice_number, dueDate: inv.due_date, amountDue: Number(inv.balance_due).toFixed(2), daysUntilDue: 3, paymentUrl: '' },
         });
       } catch (_) {}
@@ -42,7 +42,7 @@ async function invoiceAging() {
       try {
         const daysOverdue = Math.floor((Date.now() - new Date(inv.due_date).getTime()) / (1000 * 60 * 60 * 24));
         await sendMail({
-          to: inv.email, subject: 'Invoice Overdue - K ORCHIDS', template: 'invoice_overdue',
+          to: inv.email, subject: 'Invoice Overdue - ORCHIDS', template: 'invoice_overdue',
           data: { name: inv.name, invoiceNumber: inv.invoice_number, amountDue: Number(inv.balance_due).toFixed(2), daysOverdue, paymentUrl: '' },
         });
       } catch (_) {}

@@ -17,7 +17,7 @@ const service = {
     });
     try {
       const user = await require('../auth/auth.repository').findUserById(buyerId);
-      await sendMail({ to: user.email, subject: 'RFQ Received - K ORCHIDS', template: 'rfq_received', data: { name: user.name, rfqNumber, itemCount: data.items.length } });
+      await sendMail({ to: user.email, subject: 'RFQ Received - ORCHIDS', template: 'rfq_received', data: { name: user.name, rfqNumber, itemCount: data.items.length } });
     } catch (_) {}
     return rfq;
   },
@@ -63,7 +63,7 @@ const service = {
       const user = await require('../auth/auth.repository').findUserById(rfq.buyer_id);
       const items = await repo.findItems(id);
       const totalAmount = items.reduce((s, i) => s + (Number(i.quoted_price) || 0) * i.quantity, 0);
-      await sendMail({ to: user.email, subject: 'RFQ Quoted - K ORCHIDS', template: 'rfq_quoted', data: { name: user.name, rfqNumber: rfq.rfq_number, totalAmount: totalAmount.toFixed(2), quoteExpiry: data.quote_expiry || '7 days', rfqUrl: '' } });
+      await sendMail({ to: user.email, subject: 'RFQ Quoted - ORCHIDS', template: 'rfq_quoted', data: { name: user.name, rfqNumber: rfq.rfq_number, totalAmount: totalAmount.toFixed(2), quoteExpiry: data.quote_expiry || '7 days', rfqUrl: '' } });
     } catch (_) {}
   },
 
@@ -79,7 +79,7 @@ const service = {
 
     try {
       const user = await require('../auth/auth.repository').findUserById(rfq.buyer_id);
-      await sendMail({ to: user.email, subject: 'RFQ Declined - K ORCHIDS', template: 'rfq_declined', data: { name: user.name, rfqNumber: rfq.rfq_number, reason: data.reason } });
+      await sendMail({ to: user.email, subject: 'RFQ Declined - ORCHIDS', template: 'rfq_declined', data: { name: user.name, rfqNumber: rfq.rfq_number, reason: data.reason } });
     } catch (_) {}
   },
 

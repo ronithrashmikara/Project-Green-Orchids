@@ -47,7 +47,7 @@ const buyersService = {
     try {
       const user = await authRepository.findUserById(userId);
       await sendMail({
-        to: user.email, subject: 'Trade Account Approved - K ORCHIDS',
+        to: user.email, subject: 'Trade Account Approved - ORCHIDS',
         template: 'buyer_approved', data: {
           name: buyer.name, creditLimit: data.credit_limit,
           paymentTerms: data.payment_terms, tier: data.tier,
@@ -72,7 +72,7 @@ const buyersService = {
 
     try {
       const user = await authRepository.findUserById(userId);
-      await sendMail({ to: user.email, subject: 'Trade Account Update - K ORCHIDS', template: 'buyer_rejected', data: { name: buyer.name, reason } });
+      await sendMail({ to: user.email, subject: 'Trade Account Update - ORCHIDS', template: 'buyer_rejected', data: { name: buyer.name, reason } });
     } catch (_) {}
   },
 
@@ -94,7 +94,7 @@ const buyersService = {
 
     try {
       const user = await authRepository.findUserById(userId);
-      await sendMail({ to: user.email, subject: 'Account Suspended - K ORCHIDS', template: 'buyer_suspended', data: { name: buyer.name, reason } });
+      await sendMail({ to: user.email, subject: 'Account Suspended - ORCHIDS', template: 'buyer_suspended', data: { name: buyer.name, reason } });
     } catch (_) {}
   },
 
