@@ -6,6 +6,7 @@ const { authLimiter, forgotPasswordLimiter } = require('../../middleware/rateLim
 const {
   registerSchema, loginSchema, forgotPasswordSchema,
   resetPasswordSchema, changePasswordSchema, updateProfileSchema,
+  verifyOtpSchema, resendOtpSchema,
 } = require('./auth.schema');
 
 const router = Router();
@@ -35,7 +36,8 @@ router.post('/register', authLimiter, normalizeRegisterBody, validate({ body: re
 router.post('/login', authLimiter, validate({ body: loginSchema }), ctrl.login);
 router.post('/refresh', ctrl.refresh);
 router.post('/logout', ctrl.logout);
-router.post('/verify-email/:token', ctrl.verifyEmail);
+router.post('/verify-email', authLimiter, validate({ body: verifyOtpSchema }), ctrl.verifyEmail);
+router.post('/verify-email/resend', authLimiter, validate({ body: resendOtpSchema }), ctrl.resendVerification);
 router.post('/forgot-password', forgotPasswordLimiter, validate({ body: forgotPasswordSchema }), ctrl.forgotPassword);
 router.post('/reset-password/:token', validate({ body: resetPasswordSchema }), ctrl.resetPassword);
 
@@ -44,6 +46,7 @@ router.get('/me', requireAuth, ctrl.getMe);
 router.get('/me/summary', requireAuth, ctrl.getSummary);
 router.get('/me/sessions', requireAuth, ctrl.getSessions);
 router.delete('/me/sessions/:id', requireAuth, ctrl.revokeSession);
+router.post('/me/sessions/revoke-others', requireAuth, ctrl.signOutOtherSessions);
 router.patch('/me/profile', requireAuth, validate({ body: updateProfileSchema }), ctrl.updateProfile);
 router.post('/me/change-password', requireAuth, validate({ body: changePasswordSchema }), ctrl.changePassword);
 

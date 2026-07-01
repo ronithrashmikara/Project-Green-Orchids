@@ -7,10 +7,12 @@ const repo = require('./rfq.repository');
 
 const service = {
   async create(data, buyerId) {
+    const acct = await repo.accountIdForUser(buyerId);
+    if (!acct) throw new AppError('NO_ACCOUNT', 'No trade account for this user', 403);
     const rfqNumber = await repo.nextRfqNumber();
     let rfq;
     await tx(async (client) => {
-      rfq = await repo.create(client, { rfq_number: rfqNumber, buyer_id: buyerId, notes: data.notes });
+      rfq = await repo.create(client, { rfq_number: rfqNumber, buyer_id: acct.id, notes: data.notes });
       for (const item of data.items) {
         await repo.createItem(client, { rfq_id: rfq.id, product_id: item.product_id, quantity: item.quantity, notes: item.notes });
       }
@@ -24,16 +26,37 @@ const service = {
 
   async list(queryParams, userId, isAdmin) {
     const o = paginate(queryParams);
-    const { rows, total } = await repo.findAll(isAdmin ? null : userId, isAdmin, o);
+    const acct = isAdmin ? null : await repo.accountIdForUser(userId);
+    const { rows, total } = await repo.findAll(isAdmin ? null : acct?.id, isAdmin, o);
     return { data: rows, pagination: { page: o.page, limit: o.limit, total, pages: Math.ceil(total / o.limit) } };
   },
 
   async get(id, userId, isAdmin) {
     const rfq = await repo.findById(id);
     if (!rfq) throw new AppError('NOT_FOUND', 'RFQ not found', 404);
-    if (!isAdmin && rfq.buyer_id !== userId) throw new AppError('FORBIDDEN', 'Access denied', 403);
+    if (!isAdmin) {
+      const acct = await repo.accountIdForUser(userId);
+      if (!acct || rfq.buyer_id !== acct.id) throw new AppError('FORBIDDEN', 'Access denied', 403);
+    }
     const items = await repo.findItems(id);
-    return { ...rfq, items };
+    return {
+      id: rfq.id,
+      rfqNo: rfq.rfq_no,
+      status: rfq.status,
+      notes: rfq.buyer_note,
+      quoteExpiry: rfq.quote_expiry,
+      quotedAt: rfq.quoted_at,
+      createdAt: rfq.created_at,
+      expiresAt: rfq.quote_expiry,
+      lines: items.map((it) => ({
+        id: it.id,
+        productId: it.product_id,
+        productName: it.product_name,
+        quantity: it.requested_qty,
+        targetPrice: it.requested_unit_price,
+        quotedPrice: it.quoted_unit_price,
+      })),
+    };
   },
 
   async review(id, data, role) {
@@ -84,25 +107,28 @@ const service = {
   },
 
   async accept(id, userId, role) {
+    const acct = await repo.accountIdForUser(userId);
     const rfq = await repo.findById(id);
     if (!rfq) throw new AppError('NOT_FOUND', 'RFQ not found', 404);
-    if (rfq.buyer_id !== userId) throw new AppError('FORBIDDEN', 'Access denied', 403);
+    if (!acct || rfq.buyer_id !== acct.id) throw new AppError('FORBIDDEN', 'Access denied', 403);
     assertTransition('RFQ', rfq.status, 'ACCEPTED', role);
     await repo.updateStatus(null, id, 'ACCEPTED');
   },
 
   async reject(id, userId, role) {
+    const acct = await repo.accountIdForUser(userId);
     const rfq = await repo.findById(id);
     if (!rfq) throw new AppError('NOT_FOUND', 'RFQ not found', 404);
-    if (rfq.buyer_id !== userId) throw new AppError('FORBIDDEN', 'Access denied', 403);
+    if (!acct || rfq.buyer_id !== acct.id) throw new AppError('FORBIDDEN', 'Access denied', 403);
     assertTransition('RFQ', rfq.status, 'REJECTED', role);
     await repo.updateStatus(null, id, 'REJECTED');
   },
 
   async convertToOrder(id, userId) {
+    const acct = await repo.accountIdForUser(userId);
     const rfq = await repo.findById(id);
     if (!rfq) throw new AppError('NOT_FOUND', 'RFQ not found', 404);
-    if (rfq.buyer_id !== userId) throw new AppError('FORBIDDEN', 'Access denied', 403);
+    if (!acct || rfq.buyer_id !== acct.id) throw new AppError('FORBIDDEN', 'Access denied', 403);
     if (rfq.status !== 'ACCEPTED') throw new AppError('INVALID_STATE', 'RFQ must be accepted to convert', 409);
 
     const items = await repo.findItems(id);

@@ -25,7 +25,7 @@ export default function AlertsPage() {
 
   const handleAcknowledge = async (id) => {
     try {
-      await api.post(`/inventory/alerts/${id}/acknowledge`);
+      await api.patch(`/inventory/alerts/${id}/ack`);
       setAlerts((a) => a.map((x) => x.id === id ? { ...x, acknowledged: true } : x));
       toast.success('Acknowledged');
     } catch { toast.error('Failed'); }

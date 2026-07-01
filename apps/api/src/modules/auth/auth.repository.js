@@ -32,12 +32,12 @@ const authRepository = {
     return result.rows[0] || null;
   },
 
-  async createUser(client, { email, passwordHash, name, roleId = null }) {
+  async createUser(client, { email, passwordHash, name, roleId = null, status = 'PENDING' }) {
     const result = await run(client,
       `INSERT INTO users (email, password_hash, full_name, status, role_id)
-       VALUES ($1, $2, $3, 'ACTIVE', COALESCE($4, (SELECT id FROM roles WHERE name = 'TRADE_BUYER')))
+       VALUES ($1, $2, $3, $5, COALESCE($4, (SELECT id FROM roles WHERE name = 'TRADE_BUYER')))
        RETURNING id, email, full_name AS name, status, role_id, created_at`,
-      [email.toLowerCase(), passwordHash, name, roleId]
+      [email.toLowerCase(), passwordHash, name, roleId, status]
     );
     return result.rows[0];
   },
@@ -70,6 +70,25 @@ const authRepository = {
       [token, purpose]
     );
     return result.rows[0] || null;
+  },
+
+  // OTP codes are only meaningful scoped to the user who requested them
+  // (a bare 6-digit code has too little entropy to look up globally).
+  async findEmailTokenForUser(userId, token, type) {
+    const purpose = type === 'PASSWORD_RESET' ? 'password_reset' : type === 'INVITATION' ? 'invitation' : 'email_verify';
+    const result = await query(
+      `SELECT * FROM email_tokens WHERE user_id = $1 AND token_hash = $2 AND purpose = $3 AND used_at IS NULL AND expires_at > NOW()`,
+      [userId, token, purpose]
+    );
+    return result.rows[0] || null;
+  },
+
+  async invalidateUserTokens(client, userId, type) {
+    const purpose = type === 'PASSWORD_RESET' ? 'password_reset' : type === 'INVITATION' ? 'invitation' : 'email_verify';
+    await run(client,
+      `UPDATE email_tokens SET used_at = NOW() WHERE user_id = $1 AND purpose = $2 AND used_at IS NULL`,
+      [userId, purpose]
+    );
   },
 
   async markTokenUsed(client, tokenId) {
@@ -116,6 +135,15 @@ const authRepository = {
     await run(client,
       `UPDATE auth_sessions SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL`,
       [userId]
+    );
+  },
+
+  // Keeps the caller's own session alive - used for "sign out other devices".
+  async revokeOtherSessions(userId, currentRefreshTokenHash) {
+    await query(
+      `UPDATE auth_sessions SET revoked_at = NOW()
+       WHERE user_id = $1 AND revoked_at IS NULL AND refresh_token_hash IS DISTINCT FROM $2`,
+      [userId, currentRefreshTokenHash]
     );
   },
 

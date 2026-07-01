@@ -97,8 +97,15 @@ const authController = {
 
   async verifyEmail(req, res, next) {
     try {
-      await authService.verifyEmail(req.params.token);
+      await authService.verifyEmailOtp(req.body);
       res.json({ success: true, data: { message: 'Email verified successfully' } });
+    } catch (err) { next(err); }
+  },
+
+  async resendVerification(req, res, next) {
+    try {
+      await authService.resendVerificationOtp(req.body);
+      res.json({ success: true, data: { message: 'Verification code resent' } });
     } catch (err) { next(err); }
   },
 
@@ -148,6 +155,14 @@ const authController = {
     try {
       await authService.revokeSession(req.user.id, req.params.id);
       res.json({ success: true, data: { message: 'Session revoked' } });
+    } catch (err) { next(err); }
+  },
+
+  async signOutOtherSessions(req, res, next) {
+    try {
+      const currentRefreshToken = req.cookies?.refresh_token || req.cookies?.refreshToken;
+      await authService.signOutOtherSessions(req.user.id, currentRefreshToken);
+      res.json({ success: true, data: { message: 'Other sessions signed out' } });
     } catch (err) { next(err); }
   },
 

@@ -35,21 +35,35 @@ export default function RFQDetailPage() {
 
   const handleAccept = async () => {
     try {
-      await api.post(`/rfqs/${id}/accept`);
+      await api.patch(`/rfqs/${id}/accept`);
       toast.success('Quote accepted');
       setRfq((r) => ({ ...r, status: 'ACCEPTED' }));
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to accept');
+      toast.error(err.response?.data?.error?.message || 'Failed to accept');
     }
   };
 
   const handleReject = async () => {
     try {
-      await api.post(`/rfqs/${id}/reject`);
+      await api.patch(`/rfqs/${id}/reject`);
       toast.success('Quote rejected');
       setRfq((r) => ({ ...r, status: 'REJECTED' }));
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to reject');
+      toast.error(err.response?.data?.error?.message || 'Failed to reject');
+    }
+  };
+
+  const [converting, setConverting] = useState(false);
+  const handleConvert = async () => {
+    setConverting(true);
+    try {
+      const res = await api.post('/orders/from-rfq', { rfq_id: id });
+      toast.success('Order placed');
+      router.push(`/buyer/orders/${res.data.data.id}`);
+    } catch (err) {
+      toast.error(err.response?.data?.error?.message || 'Failed to convert to order');
+    } finally {
+      setConverting(false);
     }
   };
 
@@ -109,6 +123,19 @@ export default function RFQDetailPage() {
         <div className="flex justify-end gap-3">
           <Button variant="danger" onClick={() => setConfirmAction('reject')}>Reject Quote</Button>
           <Button onClick={() => setConfirmAction('accept')}>Accept Quote</Button>
+        </div>
+      )}
+
+      {rfq.status === 'ACCEPTED' && (
+        <div className="flex items-center justify-between gap-3 rounded-lg bg-green-50 p-4">
+          <p className="text-sm text-green-800">Quote accepted. Convert it into an order at these quoted prices.</p>
+          <Button onClick={handleConvert} loading={converting}>Convert to Order</Button>
+        </div>
+      )}
+
+      {rfq.status === 'CONVERTED' && (
+        <div className="bg-gray-100 p-4 rounded-lg text-sm text-gray-600">
+          This quote has been converted into an order.
         </div>
       )}
 

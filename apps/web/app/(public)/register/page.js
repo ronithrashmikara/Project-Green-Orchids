@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { AuthBackdrop, AuthCard, AuthInput, AuthTextarea, AuthButton, IconTile } from '@/components/auth/AuthUI';
@@ -9,6 +10,7 @@ import { AuthBackdrop, AuthCard, AuthInput, AuthTextarea, AuthButton, IconTile }
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [form, setForm] = useState({ businessName: '', registrationNo: '', phone: '', address: '', email: '', password: '', confirmPassword: '' });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -43,13 +45,16 @@ export default function RegisterPage() {
       <AuthBackdrop>
         <AuthCard className="p-8 text-center">
           <IconTile>✉</IconTile>
-          <h2 className="mt-5 font-serif-display text-2xl text-white">Verification email sent</h2>
+          <h2 className="mt-5 font-serif-display text-2xl text-white">Check your email for a code</h2>
           <p className="mt-3 text-sm leading-6 text-white/55">
-            Please check your email to verify your account. Once verified and approved, you&apos;ll be able to access the trade portal.
+            We&apos;ve sent a 6-digit verification code to {form.email}. Enter it to verify your account.
           </p>
-          <Link href="/login" className="mt-6 inline-flex rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
-            Back to sign in
-          </Link>
+          <button
+            onClick={() => router.push(`/verify-email?email=${encodeURIComponent(form.email)}`)}
+            className="mt-6 inline-flex rounded-full bg-white px-6 py-3 text-sm font-semibold text-black transition hover:bg-white/90"
+          >
+            Enter verification code
+          </button>
         </AuthCard>
       </AuthBackdrop>
     );

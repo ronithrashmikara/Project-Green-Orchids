@@ -28,6 +28,15 @@ const forgotPasswordSchema = z.object({
   email: z.string().email(),
 }).strict();
 
+const verifyOtpSchema = z.object({
+  email: z.string().email(),
+  code: z.string().regex(/^\d{6}$/, 'Code must be 6 digits'),
+}).strict();
+
+const resendOtpSchema = z.object({
+  email: z.string().email(),
+}).strict();
+
 const resetPasswordSchema = z.object({
   password: z
     .string()
@@ -65,4 +74,6 @@ module.exports = {
   resetPasswordSchema,
   changePasswordSchema,
   updateProfileSchema,
+  verifyOtpSchema,
+  resendOtpSchema,
 };

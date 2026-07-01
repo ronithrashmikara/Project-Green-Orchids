@@ -21,8 +21,19 @@ const repo = {
     const ct = await query(`SELECT COUNT(*) FROM stock_alerts sa ${where}`, params);
     const total = parseInt(ct.rows[0].count, 10);
     const r = await query(
-      `SELECT sa.*, p.name as product_name, p.stock_qty, p.reorder_level FROM stock_alerts sa
-       LEFT JOIN products p ON p.id = sa.product_id ${where} ORDER BY sa.created_at DESC LIMIT $${p++} OFFSET $${p++}`,
+      `SELECT sa.id, sa.alert_type AS type, sa.status, sa.threshold_value,
+              sa.generated_at AS "createdAt", sa.acknowledged_at AS "acknowledgedAt",
+              (sa.status <> 'OPEN') AS acknowledged,
+              p.name AS "productName", p.stock_qty AS "stockQty", p.reorder_level AS "reorderLevel",
+              CASE sa.alert_type
+                WHEN 'OUT_OF_STOCK' THEN 'Out of stock (' || COALESCE(p.stock_qty, 0) || ' units)'
+                WHEN 'LOW_STOCK'    THEN 'Stock at ' || COALESCE(p.stock_qty, 0) || ' units, below reorder level of ' || COALESCE(p.reorder_level, 0)
+                WHEN 'REORDER'      THEN 'Reorder threshold reached (' || COALESCE(sa.threshold_value, p.reorder_level, 0) || ')'
+                WHEN 'OVERSTOCK'    THEN 'Stock at ' || COALESCE(p.stock_qty, 0) || ' units, above healthy range'
+                ELSE sa.alert_type
+              END AS message
+       FROM stock_alerts sa
+       LEFT JOIN products p ON p.id = sa.product_id ${where} ORDER BY sa.generated_at DESC LIMIT $${p++} OFFSET $${p++}`,
       [...params, limit, offset]
     );
     return { rows: r.rows, total };

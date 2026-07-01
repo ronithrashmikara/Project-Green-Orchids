@@ -63,7 +63,7 @@ export default function InventoryDashboardPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Total SKUs"       value={m.totalProducts || 0}                    detail="Active products"         icon="📦" tone="emerald" href="/inventory/products" />
-        <MetricCard label="Stock value"      value={formatLKR(m.stockValue || m.totalValue || 0)} detail="At cost price"      icon="💰" tone="sky"     />
+        <MetricCard label="Stock value"      value={formatLKR(m.totalStockValue || 0)} detail="At cost price"      icon="💰" tone="sky"     />
         <MetricCard label="Low stock items"  value={m.lowStockAlerts || m.lowStockCount || 0} detail="Below reorder level"   icon="⚠️" tone="amber"   href="/inventory/alerts"   />
         <MetricCard label="Out of stock"     value={m.outOfStockCount || 0}                  detail="Zero available units"   icon="🚫" tone="rose"    href="/inventory/alerts"   />
       </div>

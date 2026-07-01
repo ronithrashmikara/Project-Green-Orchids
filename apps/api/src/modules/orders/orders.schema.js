@@ -1,6 +1,6 @@
 const { z } = require('zod');
 const createSchema = z.object({ notes: z.string().max(1000).optional() }).strict();
-const createFromRfqSchema = z.object({ rfq_id: z.string().uuid() }).strict();
+const createFromRfqSchema = z.object({ rfq_id: z.coerce.number().int().positive() }).strict();
 const rejectSchema = z.object({ reason: z.string().min(10).max(500) }).strict();
 const cancelSchema = z.object({ reason: z.string().max(500).optional() }).strict();
 const returnSchema = z.object({

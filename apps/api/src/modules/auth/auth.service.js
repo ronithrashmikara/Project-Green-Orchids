@@ -10,6 +10,11 @@ const { writeAudit } = require('../../middleware/audit');
 const authRepository = require('./auth.repository');
 
 const BCRYPT_ROUNDS = 12;
+const OTP_EXPIRY_MINUTES = 15;
+
+function generateOtp() {
+  return String(crypto.randomInt(100000, 1000000)); // 6 digits, zero-safe (never below 100000)
+}
 
 function uiAccountStatus(status) {
   if (status === 'ACTIVE') return 'APPROVED';
@@ -55,14 +60,15 @@ const authService = {
     }
 
     const passwordHash = await hashPassword(password);
-    const verifyToken = uuidv4();
+    const otp = generateOtp();
 
     const result = await tx(async (client) => {
-      // Create user
+      // Create user - status starts PENDING until the OTP is confirmed (see login's status check)
       const user = await authRepository.createUser(client, {
         email: email.toLowerCase(),
         passwordHash,
         name,
+        status: 'PENDING',
       });
 
       // Create trade account
@@ -78,26 +84,27 @@ const authService = {
         postalCode: postal_code,
       });
 
-      // Create verification token (24h expiry)
+      // Create verification OTP (15 min expiry)
       await authRepository.createEmailToken(client, {
         userId: user.id,
-        token: verifyToken,
+        token: otp,
         type: 'EMAIL_VERIFY',
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        expiresAt: new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000),
       });
 
       return user;
     });
 
-    // Send verification email
+    // Send verification OTP email
     try {
       await sendMail({
         to: email,
-        subject: 'Verify your email - ORCHIDS',
+        subject: 'Your verification code - ORCHIDS',
         template: 'verify_email',
         data: {
           name,
-          verifyUrl: `${env.CORS_ORIGIN}/verify-email/${verifyToken}`,
+          code: otp,
+          expiryMinutes: OTP_EXPIRY_MINUTES,
         },
       });
     } catch (mailErr) {
@@ -244,16 +251,53 @@ const authService = {
     }
   },
 
-  async verifyEmail(token) {
-    const emailToken = await authRepository.findEmailToken(token, 'EMAIL_VERIFY');
+  async verifyEmailOtp({ email, code }) {
+    const user = await authRepository.findUserByEmail(email);
+    // Don't reveal whether the account exists - just say the code is invalid either way.
+    if (!user) {
+      throw new AppError('INVALID_OTP', 'Invalid or expired verification code', 400);
+    }
+    if (user.status === 'ACTIVE') {
+      return; // already verified, treat as success (idempotent)
+    }
+
+    const emailToken = await authRepository.findEmailTokenForUser(user.id, code, 'EMAIL_VERIFY');
     if (!emailToken) {
-      throw new AppError('INVALID_TOKEN', 'Invalid or expired verification token', 400);
+      throw new AppError('INVALID_OTP', 'Invalid or expired verification code', 400);
     }
 
     await tx(async (client) => {
-      await authRepository.verifyUserEmail(client, emailToken.user_id);
+      await authRepository.verifyUserEmail(client, user.id);
       await authRepository.markTokenUsed(client, emailToken.id);
     });
+  },
+
+  async resendVerificationOtp({ email }) {
+    const user = await authRepository.findUserByEmail(email);
+    // Same response either way so this can't be used to enumerate accounts.
+    if (!user || user.status === 'ACTIVE') return;
+
+    const otp = generateOtp();
+    await tx(async (client) => {
+      await authRepository.invalidateUserTokens(client, user.id, 'EMAIL_VERIFY');
+      await authRepository.createEmailToken(client, {
+        userId: user.id,
+        token: otp,
+        type: 'EMAIL_VERIFY',
+        expiresAt: new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000),
+      });
+    });
+
+    try {
+      await sendMail({
+        to: email,
+        subject: 'Your new verification code - ORCHIDS',
+        template: 'verify_email',
+        data: { name: user.name, code: otp, expiryMinutes: OTP_EXPIRY_MINUTES },
+      });
+    } catch (mailErr) {
+      console.error('Failed to resend verification email:', mailErr.message);
+    }
   },
 
   async forgotPassword({ email }) {
@@ -365,6 +409,11 @@ const authService = {
   async revokeSession(userId, sessionId) {
     const result = await authRepository.revokeSessionById(userId, sessionId);
     if (!result) throw new AppError('NOT_FOUND', 'Session not found', 404);
+  },
+
+  async signOutOtherSessions(userId, currentRefreshToken) {
+    const currentHash = currentRefreshToken ? hashToken(currentRefreshToken) : null;
+    await authRepository.revokeOtherSessions(userId, currentHash);
   },
 
   async getSummary(userId) {

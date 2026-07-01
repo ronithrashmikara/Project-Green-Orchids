@@ -36,15 +36,15 @@ export default function AccountPage() {
 
   const loadSessions = async () => {
     try {
-      const res = await api.get('/auth/sessions');
-      setSessions(res.data.sessions || res.data);
+      const res = await api.get('/auth/me/sessions');
+      setSessions(res.data.data || []);
     } catch {}
     setShowSessions(true);
   };
 
   const signOutOthers = async () => {
     try {
-      await api.post('/auth/signout-others');
+      await api.post('/auth/me/sessions/revoke-others');
       toast.success('Signed out other devices');
       loadSessions();
     } catch {
@@ -101,10 +101,10 @@ export default function AccountPage() {
           <Button variant="outline" size="sm" onClick={loadSessions}>View Sessions</Button>
         ) : (
           <div className="space-y-2">
-            {sessions.map((s, i) => (
-              <div key={i} className="text-sm flex justify-between py-1 border-b">
-                <span>{s.device || s.userAgent} <span className="text-gray-400">({s.ip})</span></span>
-                <span className="text-gray-500">{formatDate(s.createdAt)}</span>
+            {sessions.map((s) => (
+              <div key={s.id} className="text-sm flex justify-between py-1 border-b">
+                <span>{s.device_info || 'Unknown device'} <span className="text-gray-400">({s.ip_address})</span></span>
+                <span className="text-gray-500">{formatDate(s.created_at)}</span>
               </div>
             ))}
             <Button variant="outline" size="sm" onClick={signOutOthers}>Sign Out Other Devices</Button>
