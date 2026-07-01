@@ -6,9 +6,24 @@ import { Button, Input, Textarea } from '@/components/ui/Button';
 import { Table } from '@/components/ui/Table';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { StatusBadge } from '@/components/domain/StatusBadge';
 import { PageHeader } from '@/components/domain/DashboardUI';
 import { Spinner, EmptyState } from '@/components/ui/Spinner';
 import toast from 'react-hot-toast';
+
+function normalizeSupplier(s) {
+  return {
+    id: s.id,
+    name: s.name,
+    contactPerson: s.contact_person,
+    email: s.email,
+    phone: s.phone,
+    address: s.address,
+    leadTime: s.lead_time_days,
+    productCount: Number(s.product_count || 0),
+    status: s.status,
+  };
+}
 
 export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState([]);
@@ -17,14 +32,15 @@ export default function SuppliersPage() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ name: '', contactPerson: '', email: '', phone: '', address: '', leadTime: '' });
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      const res = await api.get('/admin/suppliers').catch(() => ({ data: [] }));
-      setSuppliers(res.data.suppliers || res.data.data || res.data);
-      setLoading(false);
-    })();
-  }, []);
+  const load = async () => {
+    const res = await api.get('/suppliers?limit=100').catch(() => ({ data: { data: [] } }));
+    setSuppliers((res.data.data || []).map(normalizeSupplier));
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
 
   const openEdit = (s) => {
     setEditing(s);
@@ -33,26 +49,38 @@ export default function SuppliersPage() {
   };
 
   const handleSave = async () => {
+    setSaving(true);
+    const payload = {
+      name: form.name,
+      contact_person: form.contactPerson || undefined,
+      email: form.email || undefined,
+      phone: form.phone || undefined,
+      address: form.address || undefined,
+      lead_time_days: form.leadTime ? parseInt(form.leadTime, 10) : undefined,
+    };
     try {
       if (editing) {
-        await api.put(`/admin/suppliers/${editing.id}`, { ...form, leadTime: parseInt(form.leadTime) || 0 });
-        setSuppliers((s) => s.map((x) => x.id === editing.id ? { ...x, ...form } : x));
+        await api.patch(`/suppliers/${editing.id}`, payload);
         toast.success('Updated');
       } else {
-        const res = await api.post('/admin/suppliers', { ...form, leadTime: parseInt(form.leadTime) || 0 });
-        setSuppliers((s) => [...s, res.data]);
+        await api.post('/suppliers', payload);
         toast.success('Created');
       }
       setShowForm(false);
       setEditing(null);
-    } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.error?.message || 'Failed');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = async () => {
     try {
-      await api.delete(`/admin/suppliers/${deleteTarget.id}`);
-      setSuppliers((s) => s.filter((x) => x.id !== deleteTarget.id));
-      toast.success('Deleted');
+      await api.delete(`/suppliers/${deleteTarget.id}`);
+      setSuppliers((s) => s.map((x) => x.id === deleteTarget.id ? { ...x, status: 'INACTIVE' } : x));
+      toast.success('Supplier deactivated');
     } catch { toast.error('Failed'); }
   };
 
@@ -74,10 +102,11 @@ export default function SuppliersPage() {
             { key: 'phone', label: 'Phone' },
             { key: 'leadTime', label: 'Lead Time (days)' },
             { key: 'productCount', label: 'Products' },
+            { key: 'status', label: 'Status', render: (v) => <StatusBadge status={v} /> },
             { key: 'actions', label: '', render: (_, r) => (
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" onClick={() => openEdit(r)}>Edit</Button>
-                <Button size="sm" variant="ghost" onClick={() => setDeleteTarget(r)}>Delete</Button>
+                {r.status !== 'INACTIVE' && <Button size="sm" variant="ghost" onClick={() => setDeleteTarget(r)}>Deactivate</Button>}
               </div>
             )},
           ]}
@@ -94,7 +123,7 @@ export default function SuppliersPage() {
           <Input label="Lead Time (days)" type="number" value={form.leadTime} onChange={(e) => setForm((f) => ({ ...f, leadTime: e.target.value }))} />
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
-            <Button onClick={handleSave}>Save</Button>
+            <Button onClick={handleSave} loading={saving}>Save</Button>
           </div>
         </div>
       </Modal>
@@ -103,9 +132,9 @@ export default function SuppliersPage() {
         open={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
-        title="Delete supplier"
-        message={`Delete "${deleteTarget?.name}"? This cannot be undone and may affect associated products.`}
-        confirmLabel="Delete"
+        title="Deactivate supplier"
+        message={`Deactivate "${deleteTarget?.name}"? They will be hidden from new-product supplier selection, but existing products keep their history.`}
+        confirmLabel="Deactivate"
         variant="danger"
       />
     </div>

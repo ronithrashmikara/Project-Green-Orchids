@@ -39,10 +39,13 @@ const repo = {
   },
   async findById(id) {
     const r = await query(
-      `SELECT r.*, ta.business_name AS buyer_name, u.email AS buyer_email
+      `SELECT r.*, ta.business_name AS buyer_name, u.email AS buyer_email,
+              bt.name AS buyer_tier, ta.credit_limit AS buyer_credit_limit,
+              (SELECT COALESCE(SUM(balance_due),0) FROM invoices WHERE buyer_id = ta.id) AS buyer_balance
        FROM rfqs r
        LEFT JOIN trade_accounts ta ON ta.id = r.buyer_id
        LEFT JOIN users u ON u.id = ta.user_id
+       LEFT JOIN buyer_tiers bt ON bt.id = ta.tier_id
        WHERE r.id = $1`,
       [id]
     );
@@ -66,7 +69,7 @@ const repo = {
     await (client ? client.query.bind(client) : query)('UPDATE rfqs SET quote_expiry = $1, updated_at = NOW() WHERE id = $2', [expiry, rfqId]);
   },
   async setDeclineReason(client, rfqId, reason) {
-    await (client ? client.query.bind(client) : query)('UPDATE rfqs SET decline_reason = $1, updated_at = NOW() WHERE id = $2', [reason, rfqId]);
+    await (client ? client.query.bind(client) : query)('UPDATE rfqs SET admin_note = $1, updated_at = NOW() WHERE id = $2', [reason, rfqId]);
   },
 };
 module.exports = repo;

@@ -8,8 +8,10 @@ const repo = {
     const ct = await query('SELECT COUNT(*) FROM payments');
     const total = parseInt(ct.rows[0].count, 10);
     const r = await query(
-      `SELECT p.*, ta.business_name AS buyer_name
-       FROM payments p LEFT JOIN trade_accounts ta ON ta.id = p.buyer_id
+      `SELECT p.*, ta.business_name AS buyer_name, i.invoice_no
+       FROM payments p
+       LEFT JOIN trade_accounts ta ON ta.id = p.buyer_id
+       LEFT JOIN invoices i ON i.id = p.invoice_id
        ORDER BY p.received_at DESC LIMIT $1 OFFSET $2`,
       [limit, offset]
     );

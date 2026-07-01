@@ -3,13 +3,14 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import api from '@/lib/api';
-import { Button, Input } from '@/components/ui/Button';
+import { Button, Input, Textarea } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { DatePicker } from '@/components/ui/DatePicker';
+import { Modal } from '@/components/ui/Modal';
 import { StatusBadge, TierBadge } from '@/components/domain/StatusBadge';
 import { PageHeader } from '@/components/domain/DashboardUI';
 import { Spinner, ErrorState } from '@/components/ui/Spinner';
-import { formatLKR, formatDate } from '@/lib/utils';
+import { formatLKR } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 export default function AdminRFQDetailPage() {
@@ -20,17 +21,19 @@ export default function AdminRFQDetailPage() {
   const [quotePrices, setQuotePrices] = useState({});
   const [expiryDate, setExpiryDate] = useState('');
   const [sending, setSending] = useState(false);
+  const [declineModal, setDeclineModal] = useState({ open: false, reason: '' });
+  const [declining, setDeclining] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await api.get(`/admin/rfqs/${id}`);
-        setRfq(res.data);
-        // Init quote prices
+        const res = await api.get(`/rfqs/${id}`);
+        const data = res.data.data || res.data;
+        setRfq(data);
         const prices = {};
-        (res.data.lines || []).forEach((l, i) => { prices[i] = l.quotedPrice || ''; });
+        (data.lines || []).forEach((l, i) => { prices[i] = l.quotedPrice || ''; });
         setQuotePrices(prices);
-        setExpiryDate(res.data.expiresAt?.slice(0, 10) || '');
+        setExpiryDate(data.expiresAt?.slice(0, 10) || '');
       } catch {} finally { setLoading(false); }
     })();
   }, [id]);
@@ -38,24 +41,31 @@ export default function AdminRFQDetailPage() {
   const handleSendQuote = async () => {
     setSending(true);
     try {
-      const lines = (rfq.lines || []).map((l, i) => ({
-        lineId: l.id || i,
-        quotedPrice: parseFloat(quotePrices[i]) || l.targetPrice || 0,
+      const items = (rfq.lines || []).map((l, i) => ({
+        rfq_item_id: l.id,
+        quoted_price: parseFloat(quotePrices[i]) || l.targetPrice || 0,
       }));
-      await api.post(`/admin/rfqs/${id}/quote`, { lines, expiresAt: expiryDate });
+      await api.patch(`/rfqs/${id}/quote`, {
+        items,
+        quote_expiry: expiryDate ? new Date(expiryDate).toISOString() : undefined,
+      });
       toast.success('Quote sent');
       router.push('/admin/rfqs');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed');
+      toast.error(err.response?.data?.error?.message || 'Failed');
     } finally { setSending(false); }
   };
 
-  const handleDecline = async () => {
+  const handleDeclineSubmit = async () => {
+    if (declineModal.reason.trim().length < 10) return toast.error('Reason must be at least 10 characters');
+    setDeclining(true);
     try {
-      await api.post(`/admin/rfqs/${id}/decline`);
+      await api.patch(`/rfqs/${id}/decline`, { reason: declineModal.reason });
       toast.success('Declined');
       router.push('/admin/rfqs');
-    } catch { toast.error('Failed'); }
+    } catch (err) {
+      toast.error(err.response?.data?.error?.message || 'Failed');
+    } finally { setDeclining(false); }
   };
 
   if (loading) return <Spinner className="py-20" />;
@@ -75,17 +85,16 @@ export default function AdminRFQDetailPage() {
       {/* Buyer Context */}
       <Card>
         <h3 className="text-sm font-medium mb-2">Buyer Context</h3>
-        <div className="grid grid-cols-4 gap-4 text-sm">
+        <div className="grid grid-cols-3 gap-4 text-sm">
           <div><span className="text-gray-500">Name</span><p className="font-medium">{rfq.buyerName}</p></div>
           <div><span className="text-gray-500">Tier</span><p><TierBadge tier={rfq.buyerTier} /></p></div>
-          <div><span className="text-gray-500">Reliability</span><p>{rfq.buyerReliability ?? 'N/A'}</p></div>
-          <div><span className="text-gray-500">Balance</span><p>{formatLKR(rfq.buyerBalance || 0)}</p></div>
+          <div><span className="text-gray-500">Outstanding Balance</span><p>{formatLKR(rfq.buyerBalance || 0)}</p></div>
         </div>
       </Card>
 
       {/* Lines */}
       {(rfq.lines || []).map((line, i) => (
-        <Card key={i}>
+        <Card key={line.id || i}>
           <div className="grid grid-cols-3 gap-4 items-end">
             <div>
               <p className="font-medium">{line.productName || 'Product'}</p>
@@ -109,17 +118,33 @@ export default function AdminRFQDetailPage() {
         </Card>
       ))}
 
-      {rfq.status === 'SUBMITTED' && (
+      {rfq.status === 'SUBMITTED' || rfq.status === 'UNDER_REVIEW' ? (
         <Card>
           <div className="space-y-4">
             <DatePicker label="Quote Expiry Date" value={expiryDate} onChange={setExpiryDate} />
             <div className="flex justify-end gap-3">
-              <Button variant="danger" onClick={handleDecline}>Decline</Button>
+              <Button variant="danger" onClick={() => setDeclineModal({ open: true, reason: '' })}>Decline</Button>
               <Button onClick={handleSendQuote} loading={sending}>Send Quote</Button>
             </div>
           </div>
         </Card>
-      )}
+      ) : null}
+
+      <Modal open={declineModal.open} onClose={() => setDeclineModal({ open: false, reason: '' })} title="Decline RFQ" size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">This RFQ will be marked declined and the buyer notified.</p>
+          <Textarea
+            label="Reason (required, min 10 characters)"
+            value={declineModal.reason}
+            onChange={(e) => setDeclineModal((m) => ({ ...m, reason: e.target.value }))}
+            placeholder="Explain why this request can't be fulfilled..."
+          />
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setDeclineModal({ open: false, reason: '' })}>Cancel</Button>
+            <Button variant="danger" onClick={handleDeclineSubmit} loading={declining}>Decline</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

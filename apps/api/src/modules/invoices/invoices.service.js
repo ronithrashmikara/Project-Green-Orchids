@@ -99,14 +99,62 @@ const service = {
     return paymentsService.create({ invoice_id: id, amount: data.amount, method: data.method, reference: data.reference }, userId);
   },
 
-  async getStatement(userId, month, year) {
-    const buyerId = await resolveAccountId(userId);
+  async getStatement(userId, isAdmin, { buyerUserId, month, year } = {}) {
+    const targetUserId = isAdmin && buyerUserId ? buyerUserId : userId;
+    const buyerId = await resolveAccountId(targetUserId);
     const now = new Date();
     const m = month || now.getMonth() + 1;
     const y = year || now.getFullYear();
     const invoices = await repo.getStatement(buyerId, y, m);
     const total = invoices.reduce((s, i) => s + Number(i.total_amount), 0);
     return { month: m, year: y, invoices, total };
+  },
+
+  async getStatementPdf(userId, isAdmin, { buyerUserId, month, year } = {}) {
+    const targetUserId = isAdmin && buyerUserId ? buyerUserId : userId;
+    const buyerId = await resolveAccountId(targetUserId);
+    const buyerName = await repo.businessNameForAccount(buyerId);
+    const statement = await this.getStatement(userId, isAdmin, { buyerUserId, month, year });
+
+    const doc = await PDFDocument.create();
+    const page = doc.addPage([595.28, 841.89]);
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+    const { height } = page.getSize();
+    let y = height - 60;
+    const fmt = (n) => `LKR ${Number(n).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+    page.drawText('ORCHIDS', { x: 50, y, size: 20, font: bold, color: rgb(0.17, 0.42, 0.31) });
+    page.drawText('Statement', { x: 420, y, size: 20, font: bold });
+    y -= 40;
+    page.drawText(`Account: ${buyerName || '-'}`, { x: 50, y, size: 11, font: bold });
+    page.drawText(`Period: ${statement.month}/${statement.year}`, { x: 320, y, size: 11, font });
+    y -= 40;
+
+    page.drawLine({ start: { x: 50, y }, end: { x: 545, y }, thickness: 1, color: rgb(0.8, 0.8, 0.8) });
+    y -= 20;
+    page.drawText('Invoice', { x: 50, y, size: 10, font: bold });
+    page.drawText('Status', { x: 300, y, size: 10, font: bold });
+    page.drawText('Amount', { x: 470, y, size: 10, font: bold });
+    y -= 8;
+    page.drawLine({ start: { x: 50, y }, end: { x: 545, y }, thickness: 1, color: rgb(0.8, 0.8, 0.8) });
+    y -= 20;
+
+    for (const inv of statement.invoices) {
+      if (y < 60) { y = height - 60; doc.addPage([595.28, 841.89]); }
+      page.drawText(inv.invoice_no, { x: 50, y, size: 10, font });
+      page.drawText(inv.status, { x: 300, y, size: 10, font });
+      page.drawText(fmt(inv.total_amount), { x: 470, y, size: 10, font });
+      y -= 18;
+    }
+
+    y -= 10;
+    page.drawLine({ start: { x: 50, y }, end: { x: 545, y }, thickness: 1, color: rgb(0.8, 0.8, 0.8) });
+    y -= 22;
+    page.drawText('Total for period', { x: 50, y, size: 12, font: bold });
+    page.drawText(fmt(statement.total), { x: 460, y, size: 12, font: bold });
+
+    return Buffer.from(await doc.save());
   },
 
   async getAging() {

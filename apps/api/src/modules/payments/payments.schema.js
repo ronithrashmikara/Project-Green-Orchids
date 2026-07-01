@@ -8,5 +8,6 @@ const createSchema = z.object({
 }).strict();
 const reverseSchema = z.object({
   reason: z.string().min(10).max(500),
+  confirmed_by: z.string().uuid().optional(),
 }).strict();
 module.exports = { createSchema, reverseSchema };

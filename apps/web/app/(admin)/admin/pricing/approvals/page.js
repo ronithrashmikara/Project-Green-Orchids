@@ -1,59 +1,86 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
+import { Button, Textarea } from '@/components/ui/Button';
 import { Tabs } from '@/components/ui/Tabs';
 import { Table } from '@/components/ui/Table';
+import { Modal } from '@/components/ui/Modal';
 import { StatusBadge } from '@/components/domain/StatusBadge';
 import { PageHeader } from '@/components/domain/DashboardUI';
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Spinner, EmptyState } from '@/components/ui/Spinner';
 import { formatLKR, formatDate } from '@/lib/utils';
 import toast from 'react-hot-toast';
+
+function normalizeRequest(r) {
+  return {
+    id: r.id,
+    productName: r.product_name,
+    oldPrice: r.current_price,
+    newPrice: r.requested_price,
+    requestedBy: r.requested_by_name,
+    requestedAt: r.created_at,
+  };
+}
+
+function normalizeHistory(r) {
+  return {
+    id: r.id,
+    productName: r.product_name,
+    oldPrice: r.old_price,
+    newPrice: r.new_price,
+    changedBy: r.changed_by_name,
+    changedAt: r.changed_at,
+    source: r.source,
+  };
+}
 
 export default function PricingApprovalsPage() {
   const [tab, setTab] = useState('pending');
   const [pending, setPending] = useState([]);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ product: '', dateFrom: '', dateTo: '' });
-  const [confirmReject, setConfirmReject] = useState({ open: false, id: null, name: '' });
+  const [rejectModal, setRejectModal] = useState({ open: false, request: null, note: '' });
+  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
+  const load = async () => {
     setLoading(true);
-    (async () => {
-      if (tab === 'pending') {
-        const res = await api.get('/admin/pricing/approvals').catch(() => ({ data: [] }));
-        setPending(res.data.approvals || res.data.data || res.data);
-      } else {
-        const params = new URLSearchParams();
-        if (filters.product) params.set('product', filters.product);
-        if (filters.dateFrom) params.set('dateFrom', filters.dateFrom);
-        if (filters.dateTo) params.set('dateTo', filters.dateTo);
-        const res = await api.get(`/admin/pricing/history?${params}`).catch(() => ({ data: [] }));
-        setHistory(res.data.history || res.data.data || res.data);
-      }
-      setLoading(false);
-    })();
-  }, [tab, filters]);
+    if (tab === 'pending') {
+      const res = await api.get('/pricing/requests?status=PENDING').catch(() => ({ data: { data: [] } }));
+      setPending((res.data.data || []).map(normalizeRequest));
+    } else {
+      const res = await api.get('/pricing/history').catch(() => ({ data: { data: [] } }));
+      setHistory((res.data.data || []).map(normalizeHistory));
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, [tab]);
 
   const handleApprove = async (id) => {
     try {
-      await api.post(`/admin/pricing/approvals/${id}/approve`);
+      await api.patch(`/pricing/requests/${id}/approve`, {});
       setPending((p) => p.filter((x) => x.id !== id));
       toast.success('Approved');
-    } catch { toast.error('Failed'); }
+    } catch (err) {
+      toast.error(err.response?.data?.error?.message || 'Failed');
+    }
   };
 
-  const handleReject = async (id) => {
+  const handleRejectSubmit = async () => {
+    const { request, note } = rejectModal;
+    if (note.trim().length < 5) return toast.error('Reason must be at least 5 characters');
+    setSubmitting(true);
     try {
-      await api.post(`/admin/pricing/approvals/${id}/reject`);
-      setPending((p) => p.filter((x) => x.id !== id));
+      await api.patch(`/pricing/requests/${request.id}/reject`, { note });
+      setPending((p) => p.filter((x) => x.id !== request.id));
       toast.success('Rejected');
-    } catch { toast.error('Failed'); }
+      setRejectModal({ open: false, request: null, note: '' });
+    } catch (err) {
+      toast.error(err.response?.data?.error?.message || 'Failed');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -66,48 +93,51 @@ export default function PricingApprovalsPage() {
       />
       <Tabs tabs={[{ key: 'pending', label: 'Pending', count: pending.length }, { key: 'history', label: 'History' }]} active={tab} onChange={setTab} />
 
-      {tab === 'history' && (
-        <div className="flex gap-3">
-          <input type="text" placeholder="Product" value={filters.product} onChange={(e) => setFilters((f) => ({ ...f, product: e.target.value }))} className="px-3 py-2 border rounded text-sm" />
-          <input type="date" value={filters.dateFrom} onChange={(e) => setFilters((f) => ({ ...f, dateFrom: e.target.value }))} className="px-3 py-2 border rounded text-sm" />
-          <input type="date" value={filters.dateTo} onChange={(e) => setFilters((f) => ({ ...f, dateTo: e.target.value }))} className="px-3 py-2 border rounded text-sm" />
-        </div>
-      )}
-
       {loading ? <Spinner className="py-20" /> : (tab === 'pending' ? pending.length === 0 : history.length === 0) ? <EmptyState title="No items" /> : (
         <Table
           columns={tab === 'pending' ? [
             { key: 'productName', label: 'Product' },
-            { key: 'oldPrice', label: 'Old Price', render: (v) => formatLKR(v) },
-            { key: 'newPrice', label: 'New Price', render: (v) => formatLKR(v) },
+            { key: 'oldPrice', label: 'Current Price', render: (v) => formatLKR(v) },
+            { key: 'newPrice', label: 'Requested Price', render: (v) => formatLKR(v) },
             { key: 'requestedBy', label: 'Requested By' },
             { key: 'requestedAt', label: 'Date', render: (v) => formatDate(v) },
             { key: 'actions', label: '', render: (_, r) => (
               <div className="flex gap-2">
                 <Button size="sm" onClick={() => handleApprove(r.id)}>Approve</Button>
-                <Button size="sm" variant="danger" onClick={() => setConfirmReject({ open: true, id: r.id, name: r.productName })}>Reject</Button>
+                <Button size="sm" variant="danger" onClick={() => setRejectModal({ open: true, request: r, note: '' })}>Reject</Button>
               </div>
             )},
           ] : [
             { key: 'productName', label: 'Product' },
-            { key: 'oldPrice', label: 'Old', render: (v) => formatLKR(v) },
+            { key: 'oldPrice', label: 'Old', render: (v) => v != null ? formatLKR(v) : '—' },
             { key: 'newPrice', label: 'New', render: (v) => formatLKR(v) },
-            { key: 'status', label: 'Status', render: (v) => <StatusBadge status={v} /> },
-            { key: 'resolvedAt', label: 'Resolved', render: (v) => formatDate(v) },
+            { key: 'source', label: 'Source', render: (v) => <StatusBadge status={v} /> },
+            { key: 'changedBy', label: 'Changed By' },
+            { key: 'changedAt', label: 'Date', render: (v) => formatDate(v) },
           ]}
           rows={tab === 'pending' ? pending : history}
         />
       )}
 
-      <ConfirmDialog
-        open={confirmReject.open}
-        onClose={() => setConfirmReject({ open: false, id: null, name: '' })}
-        onConfirm={() => handleReject(confirmReject.id)}
-        title="Reject price change"
-        message={`Reject the pending price change for ${confirmReject.name}? The product will keep its current price.`}
-        confirmLabel="Reject"
-        variant="danger"
-      />
+      <Modal open={rejectModal.open} onClose={() => setRejectModal({ open: false, request: null, note: '' })} title="Reject price change" size="sm">
+        {rejectModal.request && (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Reject the pending price change for {rejectModal.request.productName}? The product will keep its current price.
+            </p>
+            <Textarea
+              label="Reason (required, min 5 characters)"
+              value={rejectModal.note}
+              onChange={(e) => setRejectModal((m) => ({ ...m, note: e.target.value }))}
+              placeholder="Why is this being rejected?"
+            />
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setRejectModal({ open: false, request: null, note: '' })}>Cancel</Button>
+              <Button variant="danger" onClick={handleRejectSubmit} loading={submitting}>Reject</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

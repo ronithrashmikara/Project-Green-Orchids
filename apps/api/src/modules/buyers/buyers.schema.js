@@ -1,9 +1,9 @@
 const { z } = require('zod');
 
 const approveSchema = z.object({
-  tier: z.enum(['TIER_1', 'TIER_2', 'TIER_3', 'TIER_4']).default('TIER_1'),
+  tier: z.enum(['SILVER', 'GOLD', 'PLATINUM']).default('SILVER'),
   credit_limit: z.number().min(0),
-  payment_terms: z.number().int().min(0).max(120).default(30),
+  payment_terms: z.enum(['NET_15', 'NET_30', 'NET_45', 'NET_60']).default('NET_30'),
 }).strict();
 
 const rejectSchema = z.object({
@@ -20,7 +20,7 @@ const creditUpdateSchema = z.object({
 }).strict();
 
 const tierUpdateSchema = z.object({
-  tier: z.enum(['TIER_1', 'TIER_2', 'TIER_3', 'TIER_4']),
+  tier: z.enum(['SILVER', 'GOLD', 'PLATINUM']),
   reason: z.string().min(5).max(500),
 }).strict();
 

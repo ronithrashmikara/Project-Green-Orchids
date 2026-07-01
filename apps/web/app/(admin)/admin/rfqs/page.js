@@ -4,10 +4,10 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { Table } from '@/components/ui/Table';
-import { StatusBadge, TierBadge } from '@/components/domain/StatusBadge';
+import { StatusBadge } from '@/components/domain/StatusBadge';
 import { PageHeader } from '@/components/domain/DashboardUI';
 import { Spinner, EmptyState } from '@/components/ui/Spinner';
-import { formatDate, formatLKR } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 
 export default function AdminRFQsPage() {
   const router = useRouter();
@@ -18,8 +18,15 @@ export default function AdminRFQsPage() {
   useEffect(() => {
     (async () => {
       const params = filter ? `?status=${filter}` : '';
-      const res = await api.get(`/admin/rfqs${params}`).catch(() => ({ data: [] }));
-      setRfqs(res.data.rfqs || res.data.data || res.data);
+      const res = await api.get(`/rfqs${params}`).catch(() => ({ data: { data: [] } }));
+      const rows = (res.data.data || []).map((r) => ({
+        id: r.id,
+        rfqNo: r.rfq_no,
+        buyerName: r.buyer_name,
+        createdAt: r.created_at,
+        status: r.status,
+      }));
+      setRfqs(rows);
       setLoading(false);
     })();
   }, [filter]);
@@ -33,7 +40,7 @@ export default function AdminRFQsPage() {
         tone="emerald"
       />
       <div className="flex gap-2">
-        {['', 'SUBMITTED', 'QUOTED', 'ACCEPTED', 'DECLINED', 'EXPIRED'].map((s) => (
+        {['', 'SUBMITTED', 'UNDER_REVIEW', 'QUOTED', 'ACCEPTED', 'CONVERTED', 'DECLINED', 'REJECTED', 'EXPIRED'].map((s) => (
           <button key={s} onClick={() => setFilter(s)} className={`px-3 py-1 text-sm rounded-full ${filter === s ? 'bg-green-700 text-white' : 'bg-gray-100'}`}>{s || 'All'}</button>
         ))}
       </div>
@@ -42,7 +49,6 @@ export default function AdminRFQsPage() {
           columns={[
             { key: 'rfqNo', label: 'RFQ #', render: (v, r) => v || r.id },
             { key: 'buyerName', label: 'Buyer' },
-            { key: 'items', label: 'Items', render: (v) => v?.length || '-' },
             { key: 'createdAt', label: 'Date', render: (v) => formatDate(v) },
             { key: 'status', label: 'Status', render: (v) => <StatusBadge status={v} /> },
           ]}

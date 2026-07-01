@@ -8,6 +8,7 @@ const r = Router();
 r.use(requireAuth);
 r.get('/', c.list);
 r.get('/statements', c.statement);
+r.get('/statements/pdf', c.statementPdf);
 r.get('/aging', requirePermission('invoice.view.all'), c.aging);
 r.get('/:id', c.get);
 r.get('/:id/pdf', c.pdf);

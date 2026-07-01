@@ -48,6 +48,10 @@ const service = {
       quotedAt: rfq.quoted_at,
       createdAt: rfq.created_at,
       expiresAt: rfq.quote_expiry,
+      buyerName: rfq.buyer_name,
+      buyerEmail: rfq.buyer_email,
+      buyerTier: rfq.buyer_tier,
+      buyerBalance: Number(rfq.buyer_balance || 0),
       lines: items.map((it) => ({
         id: it.id,
         productId: it.product_id,

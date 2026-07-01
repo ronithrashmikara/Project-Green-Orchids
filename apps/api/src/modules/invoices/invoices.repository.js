@@ -4,6 +4,10 @@ const repo = {
     const r = await query(`SELECT id FROM trade_accounts WHERE user_id = $1`, [userId]);
     return r.rows[0] || null;
   },
+  async businessNameForAccount(accountId) {
+    const r = await query(`SELECT business_name FROM trade_accounts WHERE id = $1`, [accountId]);
+    return r.rows[0]?.business_name || null;
+  },
   async findAll(buyerId, isAdmin, filters, { limit, offset, sort, order }) {
     let where = 'WHERE 1=1'; const params = []; let p = 1;
     if (!isAdmin && buyerId) { where += ` AND i.buyer_id = $${p++}`; params.push(buyerId); }
@@ -41,17 +45,16 @@ const repo = {
   },
   async getAgingReport(asOf) {
     const r = await query(
-      `SELECT i.buyer_id, u.name as buyer_name, ta.business_name,
+      `SELECT i.buyer_id, ta.business_name AS buyer_name,
               COUNT(i.id) as invoice_count,
               COALESCE(SUM(i.balance_due), 0) as total_outstanding,
-              COALESCE(SUM(CASE WHEN i.due_date < $1 - INTERVAL '90 days' THEN i.balance_due ELSE 0 END), 0) as bucket_90plus,
-              COALESCE(SUM(CASE WHEN i.due_date >= $1 - INTERVAL '90 days' AND i.due_date < $1 - INTERVAL '60 days' THEN i.balance_due ELSE 0 END), 0) as bucket_60_90,
-              COALESCE(SUM(CASE WHEN i.due_date >= $1 - INTERVAL '60 days' AND i.due_date < $1 - INTERVAL '30 days' THEN i.balance_due ELSE 0 END), 0) as bucket_30_60,
-              COALESCE(SUM(CASE WHEN i.due_date >= $1 - INTERVAL '30 days' AND i.due_date <= $1 THEN i.balance_due ELSE 0 END), 0) as bucket_0_30
-       FROM invoices i LEFT JOIN users u ON u.id = i.buyer_id
-       LEFT JOIN trade_accounts ta ON ta.user_id = i.buyer_id
-       WHERE i.status IN ('ISSUED','PARTIALLY_PAID','OVERDUE') AND i.balance_due > 0
-       GROUP BY i.buyer_id, u.name, ta.business_name ORDER BY total_outstanding DESC`,
+              COALESCE(SUM(CASE WHEN i.due_date < $1::date - INTERVAL '90 days' THEN i.balance_due ELSE 0 END), 0) as bucket_90plus,
+              COALESCE(SUM(CASE WHEN i.due_date >= $1::date - INTERVAL '90 days' AND i.due_date < $1::date - INTERVAL '60 days' THEN i.balance_due ELSE 0 END), 0) as bucket_60_90,
+              COALESCE(SUM(CASE WHEN i.due_date >= $1::date - INTERVAL '60 days' AND i.due_date < $1::date - INTERVAL '30 days' THEN i.balance_due ELSE 0 END), 0) as bucket_30_60,
+              COALESCE(SUM(CASE WHEN i.due_date >= $1::date - INTERVAL '30 days' AND i.due_date <= $1::date THEN i.balance_due ELSE 0 END), 0) as bucket_0_30
+       FROM invoices i LEFT JOIN trade_accounts ta ON ta.id = i.buyer_id
+       WHERE i.status IN ('PENDING','PARTIALLY_PAID','OVERDUE') AND i.balance_due > 0
+       GROUP BY i.buyer_id, ta.business_name ORDER BY total_outstanding DESC`,
       [asOf]
     );
     return r.rows;
