@@ -9,6 +9,7 @@ import { Tabs } from '@/components/ui/Tabs';
 import { Table } from '@/components/ui/Table';
 import { StatusBadge, TierBadge, CreditBar } from '@/components/domain/StatusBadge';
 import { PageHeader } from '@/components/domain/DashboardUI';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Spinner, ErrorState, EmptyState } from '@/components/ui/Spinner';
 import { formatLKR, formatDate } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -22,6 +23,7 @@ export default function BuyerDetailPage() {
   const [tab, setTab] = useState('overview');
   const [tier, setTier] = useState('');
   const [creditLimit, setCreditLimit] = useState('');
+  const [confirmSuspend, setConfirmSuspend] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -112,11 +114,21 @@ export default function BuyerDetailPage() {
 
       <div className="flex gap-2">
         {buyer.status === 'ACTIVE' ? (
-          <Button variant="danger" onClick={handleSuspend}>Suspend</Button>
+          <Button variant="danger" onClick={() => setConfirmSuspend(true)}>Suspend</Button>
         ) : buyer.status === 'SUSPENDED' ? (
           <Button onClick={handleReactivate}>Reactivate</Button>
         ) : null}
       </div>
+
+      <ConfirmDialog
+        open={confirmSuspend}
+        onClose={() => setConfirmSuspend(false)}
+        onConfirm={handleSuspend}
+        title="Suspend buyer account"
+        message={`Suspend ${buyer.businessName}? They will immediately lose access to the platform until reactivated.`}
+        confirmLabel="Suspend account"
+        variant="danger"
+      />
 
       <Tabs tabs={tabs} active={tab} onChange={setTab} />
 

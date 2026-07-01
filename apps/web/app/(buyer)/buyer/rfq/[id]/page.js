@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { StatusBadge, TimelineView } from '@/components/domain/StatusBadge';
 import { Spinner, ErrorState } from '@/components/ui/Spinner';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { PageHeader } from '@/components/domain/DashboardUI';
 import { formatLKR, formatDate } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -17,6 +18,7 @@ export default function RFQDetailPage() {
   const [rfq, setRfq] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [confirmAction, setConfirmAction] = useState(null); // 'accept' | 'reject' | null
 
   useEffect(() => {
     (async () => {
@@ -105,8 +107,8 @@ export default function RFQDetailPage() {
 
       {rfq.status === 'QUOTED' && !isExpired && (
         <div className="flex justify-end gap-3">
-          <Button variant="danger" onClick={handleReject}>Reject Quote</Button>
-          <Button onClick={handleAccept}>Accept Quote</Button>
+          <Button variant="danger" onClick={() => setConfirmAction('reject')}>Reject Quote</Button>
+          <Button onClick={() => setConfirmAction('accept')}>Accept Quote</Button>
         </div>
       )}
 
@@ -117,6 +119,25 @@ export default function RFQDetailPage() {
           <TimelineView events={rfq.timeline} />
         </Card>
       )}
+
+      <ConfirmDialog
+        open={confirmAction === 'accept'}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={handleAccept}
+        title="Accept quote"
+        message="Accept this quote and place the order at the quoted prices? This commits you to purchase."
+        confirmLabel="Accept quote"
+        variant="info"
+      />
+      <ConfirmDialog
+        open={confirmAction === 'reject'}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={handleReject}
+        title="Reject quote"
+        message="Reject this quote? You'll need to submit a new RFQ if you change your mind."
+        confirmLabel="Reject quote"
+        variant="danger"
+      />
     </div>
   );
 }

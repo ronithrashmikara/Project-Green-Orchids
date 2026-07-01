@@ -9,6 +9,7 @@ import { Tabs } from '@/components/ui/Tabs';
 import { Table } from '@/components/ui/Table';
 import { StatusBadge } from '@/components/domain/StatusBadge';
 import { PageHeader } from '@/components/domain/DashboardUI';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Spinner, EmptyState } from '@/components/ui/Spinner';
 import { formatLKR, formatDate } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -19,6 +20,7 @@ export default function PricingApprovalsPage() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ product: '', dateFrom: '', dateTo: '' });
+  const [confirmReject, setConfirmReject] = useState({ open: false, id: null, name: '' });
 
   useEffect(() => {
     setLoading(true);
@@ -83,7 +85,7 @@ export default function PricingApprovalsPage() {
             { key: 'actions', label: '', render: (_, r) => (
               <div className="flex gap-2">
                 <Button size="sm" onClick={() => handleApprove(r.id)}>Approve</Button>
-                <Button size="sm" variant="danger" onClick={() => handleReject(r.id)}>Reject</Button>
+                <Button size="sm" variant="danger" onClick={() => setConfirmReject({ open: true, id: r.id, name: r.productName })}>Reject</Button>
               </div>
             )},
           ] : [
@@ -96,6 +98,16 @@ export default function PricingApprovalsPage() {
           rows={tab === 'pending' ? pending : history}
         />
       )}
+
+      <ConfirmDialog
+        open={confirmReject.open}
+        onClose={() => setConfirmReject({ open: false, id: null, name: '' })}
+        onConfirm={() => handleReject(confirmReject.id)}
+        title="Reject price change"
+        message={`Reject the pending price change for ${confirmReject.name}? The product will keep its current price.`}
+        confirmLabel="Reject"
+        variant="danger"
+      />
     </div>
   );
 }
