@@ -21,37 +21,46 @@ export default function FinanceInvoiceDetailPage() {
   const [showReverse, setShowReverse] = useState(false);
   const [paymentForm, setPaymentForm] = useState({ amount: '', method: 'BANK_TRANSFER', reference: '' });
   const [reverseId, setReverseId] = useState('');
+  const [reverseReason, setReverseReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+
+  const loadInvoice = async () => {
+    const res = await api.get(`/invoices/${id}`);
+    const inv = res.data.data || res.data;
+    setInvoice({
+      ...inv,
+      invoiceNo: inv.invoice_no, buyerName: inv.buyer_name, createdAt: inv.created_at,
+      total: Number(inv.total_amount), totalPaid: Number(inv.paid_amount || 0), balance: Number(inv.balance_due),
+      payments: (inv.payments || []).map((p) => ({ id: p.id, date: p.received_at, method: p.method, reference: p.reference, amount: Number(p.amount) })),
+    });
+  };
 
   useEffect(() => {
     (async () => {
-      try {
-        const res = await api.get(`/finance/invoices/${id}`);
-        setInvoice(res.data);
-      } catch {} finally { setLoading(false); }
+      try { await loadInvoice(); } catch {} finally { setLoading(false); }
     })();
   }, [id]);
 
   const handleRecordPayment = async () => {
     setActionLoading(true);
     try {
-      await api.post(`/finance/invoices/${id}/payments`, paymentForm);
+      await api.post('/payments', { invoice_id: Number(id), amount: Number(paymentForm.amount), method: paymentForm.method, reference: paymentForm.reference || undefined });
       toast.success('Payment recorded');
       setShowPayment(false);
-      const res = await api.get(`/finance/invoices/${id}`);
-      setInvoice(res.data);
-    } catch (err) { toast.error(err.response?.data?.message || 'Failed'); } finally { setActionLoading(false); }
+      await loadInvoice();
+    } catch (err) { toast.error(err.response?.data?.error?.message || 'Failed'); } finally { setActionLoading(false); }
   };
 
   const handleReversePayment = async () => {
+    if (reverseReason.trim().length < 10) { toast.error('Reason must be at least 10 characters'); return; }
     setActionLoading(true);
     try {
-      await api.post(`/finance/invoices/${id}/payments/${reverseId}/reverse`);
+      await api.post(`/payments/${reverseId}/reverse`, { reason: reverseReason });
       toast.success('Payment reversed');
       setShowReverse(false);
-      const res = await api.get(`/finance/invoices/${id}`);
-      setInvoice(res.data);
-    } catch { toast.error('Failed'); } finally { setActionLoading(false); }
+      setReverseReason('');
+      await loadInvoice();
+    } catch (err) { toast.error(err.response?.data?.error?.message || 'Failed'); } finally { setActionLoading(false); }
   };
 
   if (loading) return <Spinner className="py-20" />;
@@ -113,7 +122,7 @@ export default function FinanceInvoiceDetailPage() {
       <Modal open={showReverse} onClose={() => setShowReverse(false)} title="Reverse Payment" size="sm">
         <div className="space-y-4">
           <p className="text-sm text-gray-600">This action requires two-person confirmation. Are you sure you want to reverse this payment?</p>
-          <Input label="Reason for reversal" value={''} onChange={() => {}} placeholder="Required" />
+          <Input label="Reason for reversal" value={reverseReason} onChange={(e) => setReverseReason(e.target.value)} placeholder="At least 10 characters" />
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setShowReverse(false)}>Cancel</Button>
             <Button variant="danger" onClick={handleReversePayment} loading={actionLoading}>Reverse Payment</Button>

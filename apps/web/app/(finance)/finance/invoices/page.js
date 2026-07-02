@@ -18,8 +18,8 @@ export default function FinanceInvoicesPage() {
 
   useEffect(() => {
     (async () => {
-      const params = filter ? `?status=${filter}` : '';
-      const res = await api.get(`/finance/invoices${params}`).catch(() => ({ data: [] }));
+      const params = filter ? `?status=${filter}&limit=100` : '?limit=100';
+      const res = await api.get(`/invoices${params}`).catch(() => ({ data: [] }));
       setInvoices(res.data.invoices || res.data.data || res.data);
       setLoading(false);
     })();
@@ -33,7 +33,7 @@ export default function FinanceInvoicesPage() {
         description="View and filter invoices by payment status."
       />
       <div className="flex gap-2">
-        {['', 'PAID', 'UNPAID', 'PARTIAL', 'OVERDUE'].map((s) => (
+        {['', 'PENDING', 'PARTIALLY_PAID', 'PAID', 'OVERDUE'].map((s) => (
           <button key={s} onClick={() => setFilter(s)} className={`px-3 py-1 text-sm rounded-full ${filter === s ? 'bg-green-700 text-white' : 'bg-gray-100'}`}>{s || 'All'}</button>
         ))}
       </div>
