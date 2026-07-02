@@ -5,6 +5,8 @@ const { requirePermission } = require('../../middleware/rbac');
 const { reportLimiter } = require('../../middleware/rateLimit');
 const r = Router();
 r.use(requireAuth, requirePermission('report.view'), reportLimiter);
+r.get('/', c.dashboard);
+r.get('/export', c.dashboard);
 r.get('/summary', c.summary);
 r.get('/sales-trend', c.salesTrend);
 r.get('/category-performance', c.categoryPerformance);

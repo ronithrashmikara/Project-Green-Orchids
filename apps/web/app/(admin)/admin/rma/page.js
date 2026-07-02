@@ -18,8 +18,17 @@ export default function AdminRMAPage() {
   useEffect(() => {
     (async () => {
       const params = filter ? `?status=${filter}` : '';
-      const res = await api.get(`/admin/rma${params}`).catch(() => ({ data: [] }));
-      setRmas(res.data.rmas || res.data.data || res.data);
+      const res = await api.get(`/rma${params}`).catch(() => ({ data: { data: [] } }));
+      const rows = (res.data.data || []).map((r) => ({
+        id: r.id,
+        rmaNo: r.rma_no,
+        orderNo: r.order_no,
+        buyerName: r.buyer_name,
+        reason: r.reason_category,
+        createdAt: r.created_at,
+        status: r.status,
+      }));
+      setRmas(rows);
       setLoading(false);
     })();
   }, [filter]);
@@ -33,7 +42,7 @@ export default function AdminRMAPage() {
         tone="emerald"
       />
       <div className="flex gap-2">
-        {['', 'SUBMITTED', 'APPROVED', 'RECEIVED', 'RESOLVED', 'REJECTED'].map((s) => (
+        {['', 'PENDING', 'APPROVED', 'ITEM_RECEIVED', 'RESOLVED', 'REJECTED', 'CANCELLED'].map((s) => (
           <button key={s} onClick={() => setFilter(s)} className={`px-3 py-1 text-sm rounded-full ${filter === s ? 'bg-green-700 text-white' : 'bg-gray-100'}`}>{s || 'All'}</button>
         ))}
       </div>

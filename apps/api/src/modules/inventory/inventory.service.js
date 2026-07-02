@@ -16,6 +16,11 @@ const service = {
     const csv = stringify(rows, { header: true });
     return csv;
   },
+  async getProducts(q) {
+    const o = paginate(q);
+    const { rows, total } = await repo.findProducts({ search: q.search }, o);
+    return { data: rows, pagination: { page: o.page, limit: o.limit, total, pages: Math.ceil(total / o.limit) } };
+  },
   async getAlerts(q) {
     const o = paginate(q);
     const { rows, total } = await repo.findAlerts({ status: q.status }, o);

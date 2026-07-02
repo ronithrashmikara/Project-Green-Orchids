@@ -42,13 +42,13 @@ export default function TiersPage() {
         toast.success('Tier updated');
       } else {
         const res = await api.post('/admin/tiers', { ...form, discount: parseFloat(form.discount), creditLimit: parseFloat(form.creditLimit), minOrders: parseInt(form.minOrders) });
-        setTiers((t) => [...t, res.data]);
+        setTiers((t) => [...t, res.data.data]);
         toast.success('Tier created');
       }
       setShowForm(false);
       setEditing(null);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed');
+      toast.error(err.response?.data?.error?.message || 'Failed');
     }
   };
 
@@ -64,7 +64,7 @@ export default function TiersPage() {
           await api.delete(`/admin/tiers/${id}`);
           setTiers((t) => t.filter((x) => x.id !== id));
           toast.success('Tier deleted');
-        } catch { toast.error('Failed'); }
+        } catch (err) { toast.error(err.response?.data?.error?.message || 'Failed'); }
       },
     });
   };

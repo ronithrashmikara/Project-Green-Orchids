@@ -8,7 +8,6 @@ const r = Router(); r.use(requireAuth);
 r.post('/', requireApprovedBuyer, validate({ body: createSchema }), c.create);
 r.get('/', c.list);
 r.get('/:id', c.get);
-r.patch('/:id/review', requirePermission('rma.decide'), c.review);
 r.patch('/:id/approve', requirePermission('rma.decide'), c.approve);
 r.patch('/:id/reject', requirePermission('rma.decide'), validate({ body: rejectSchema }), c.reject);
 r.patch('/:id/receive', requirePermission('stock.adjust'), validate({ body: receiveSchema }), c.receive);

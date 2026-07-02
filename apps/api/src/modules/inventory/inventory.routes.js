@@ -5,6 +5,7 @@ const { requirePermission } = require('../../middleware/rbac');
 const { validate } = require('../../middleware/validate');
 const { ackSchema } = require('./inventory.schema');
 const r = Router(); r.use(requireAuth, requirePermission('stock.view'));
+r.get('/products', c.products);
 r.get('/movements', c.movements);
 r.get('/alerts', c.alerts);
 r.patch('/alerts/:id/ack', requirePermission('alert.ack'), validate({ body: ackSchema }), c.ackAlert);

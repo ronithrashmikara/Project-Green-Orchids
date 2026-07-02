@@ -250,6 +250,11 @@ const service = {
     const acct = await repo.accountIdForUser(userId);
     if (!acct || order.buyer_id !== acct.id) throw new AppError('FORBIDDEN', 'Access denied', 403);
 
+    // Only delivered orders are eligible for a return (Finding: no eligibility check existed)
+    if (order.status !== 'DELIVERED' && order.status !== 'CLOSED') {
+      throw new AppError('NOT_ELIGIBLE', 'Only delivered orders are eligible for a return', 409);
+    }
+
     const items = await repo.findItems(id);
     const orderItem = items.find(i => i.id === data.order_item_id);
     if (!orderItem) throw new AppError('NOT_FOUND', 'Order item not found', 404);
@@ -259,7 +264,7 @@ const service = {
     return rmaService.create({
       order_id: id, order_item_id: data.order_item_id, quantity: data.quantity,
       reason: data.reason, return_type: data.return_type,
-    }, acct.id);
+    }, userId);
   },
 };
 module.exports = service;

@@ -1,5 +1,6 @@
-const { service, handleReport } = require('./reports.service');
+const { service, handleReport, handleDashboard } = require('./reports.service');
 module.exports = {
+  dashboard: (r, res, n) => handleDashboard(r, res, n),
   salesTrend: (r, res, n) => handleReport(r, res, n, service.salesTrend, r.query),
   categoryPerformance: (r, res, n) => handleReport(r, res, n, service.categoryPerformance, r.query),
   topProducts: (r, res, n) => handleReport(r, res, n, service.topProducts, r.query),

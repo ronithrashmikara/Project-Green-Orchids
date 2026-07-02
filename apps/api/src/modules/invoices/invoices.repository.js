@@ -60,13 +60,62 @@ const repo = {
     return r.rows;
   },
   async getStatement(buyerId, year, month) {
-    const r = await query(
-      `SELECT * FROM invoices WHERE buyer_id = $1
-       AND EXTRACT(YEAR FROM created_at) = $2 AND EXTRACT(MONTH FROM created_at) = $3
+    const periodStart = `${year}-${String(month).padStart(2, '0')}-01`;
+
+    const opening = await query(
+      `SELECT
+         (SELECT COALESCE(SUM(total_amount), 0) FROM invoices WHERE buyer_id = $1 AND created_at < $2) -
+         (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE buyer_id = $1 AND received_at < $2 AND reversed_at IS NULL) -
+         (SELECT COALESCE(SUM(a.amount), 0) FROM invoice_adjustments a JOIN invoices i ON i.id = a.invoice_id
+            WHERE i.buyer_id = $1 AND a.created_at < $2) AS opening_balance`,
+      [buyerId, periodStart]
+    );
+
+    const invoices = await query(
+      `SELECT id, invoice_no, created_at, total_amount, status FROM invoices
+       WHERE buyer_id = $1 AND EXTRACT(YEAR FROM created_at) = $2 AND EXTRACT(MONTH FROM created_at) = $3
        ORDER BY created_at`,
       [buyerId, year, month]
     );
-    return r.rows;
+    const payments = await query(
+      `SELECT p.id, p.received_at, p.amount, i.invoice_no FROM payments p
+       JOIN invoices i ON i.id = p.invoice_id
+       WHERE p.buyer_id = $1 AND p.reversed_at IS NULL
+       AND EXTRACT(YEAR FROM p.received_at) = $2 AND EXTRACT(MONTH FROM p.received_at) = $3
+       ORDER BY p.received_at`,
+      [buyerId, year, month]
+    );
+    const adjustments = await query(
+      `SELECT a.id, a.created_at, a.amount, a.reason, i.invoice_no FROM invoice_adjustments a
+       JOIN invoices i ON i.id = a.invoice_id
+       WHERE i.buyer_id = $1
+       AND EXTRACT(YEAR FROM a.created_at) = $2 AND EXTRACT(MONTH FROM a.created_at) = $3
+       ORDER BY a.created_at`,
+      [buyerId, year, month]
+    );
+
+    const entries = [
+      ...invoices.rows.map((i) => ({
+        date: i.created_at, type: 'debit', amount: Number(i.total_amount),
+        description: `Invoice ${i.invoice_no}`,
+      })),
+      ...payments.rows.map((p) => ({
+        date: p.received_at, type: 'credit', amount: Number(p.amount),
+        description: `Payment for ${p.invoice_no}`,
+      })),
+      ...adjustments.rows.map((a) => ({
+        date: a.created_at, type: 'credit', amount: Number(a.amount),
+        description: `${a.reason || 'Adjustment'} (${a.invoice_no})`,
+      })),
+    ].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    const openingBalance = Number(opening.rows[0].opening_balance || 0);
+    const closingBalance = entries.reduce(
+      (bal, e) => bal + (e.type === 'debit' ? e.amount : -e.amount),
+      openingBalance
+    );
+
+    return { openingBalance, entries, closingBalance, invoices: invoices.rows };
   },
   async updateStatus(client, id, status) {
     await (client ? client.query.bind(client) : query)('UPDATE invoices SET status = $1, updated_at = NOW() WHERE id = $2', [status, id]);

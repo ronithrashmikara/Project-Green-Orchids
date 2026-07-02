@@ -19,8 +19,8 @@ export default function StatementsPage() {
     (async () => {
       setLoading(true);
       try {
-        const res = await api.get(`/statements?month=${month}`);
-        setStatement(res.data);
+        const res = await api.get(`/invoices/statements?month=${month}`);
+        setStatement(res.data.data);
       } catch {
         setStatement(null);
       } finally {
@@ -31,7 +31,7 @@ export default function StatementsPage() {
 
   const handleDownload = async () => {
     try {
-      const res = await api.get(`/statements/pdf?month=${month}`, { responseType: 'blob' });
+      const res = await api.get(`/invoices/statements/pdf?month=${month}`, { responseType: 'blob' });
       const url = URL.createObjectURL(new Blob([res.data]));
       const a = document.createElement('a');
       a.href = url;
@@ -67,7 +67,7 @@ export default function StatementsPage() {
                   <span className="ml-3 text-gray-700">{entry.description}</span>
                 </div>
                 <span className={entry.type === 'credit' ? 'text-green-700' : 'text-red-700'}>
-                  {entry.type === 'credit' ? '+' : '-'}{formatLKR(Math.abs(entry.amount))}
+                  {entry.type === 'credit' ? '-' : '+'}{formatLKR(Math.abs(entry.amount))}
                 </span>
               </div>
             ))}

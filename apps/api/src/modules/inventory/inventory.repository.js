@@ -38,6 +38,20 @@ const repo = {
     );
     return { rows: r.rows, total };
   },
+  async findProducts(filters, { limit, offset }) {
+    let where = 'WHERE 1=1'; const params = []; let p = 1;
+    if (filters.search) { where += ` AND (p.name ILIKE $${p} OR p.sku ILIKE $${p})`; params.push(`%${filters.search}%`); p++; }
+    const ct = await query(`SELECT COUNT(*) FROM products p ${where}`, params);
+    const total = parseInt(ct.rows[0].count, 10);
+    const r = await query(
+      `SELECT p.id, p.sku, p.name, c.name AS category, p.base_price AS price,
+              p.stock_qty AS stock, p.reserved_qty AS reserved, p.reorder_level AS "minStock"
+       FROM products p LEFT JOIN categories c ON c.id = p.category_id ${where}
+       ORDER BY p.name LIMIT $${p++} OFFSET $${p++}`,
+      [...params, limit, offset]
+    );
+    return { rows: r.rows, total };
+  },
   async ackAlert(id, actor) {
     await query('UPDATE stock_alerts SET status=$1, acknowledged_by=$2, acknowledged_at=NOW() WHERE id=$3', ['ACKNOWLEDGED', actor, id]);
   },

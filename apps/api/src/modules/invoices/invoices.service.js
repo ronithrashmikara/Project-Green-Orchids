@@ -105,9 +105,9 @@ const service = {
     const now = new Date();
     const m = month || now.getMonth() + 1;
     const y = year || now.getFullYear();
-    const invoices = await repo.getStatement(buyerId, y, m);
-    const total = invoices.reduce((s, i) => s + Number(i.total_amount), 0);
-    return { month: m, year: y, invoices, total };
+    const statement = await repo.getStatement(buyerId, y, m);
+    const total = statement.invoices.reduce((s, i) => s + Number(i.total_amount), 0);
+    return { month: m, year: y, ...statement, total };
   },
 
   async getStatementPdf(userId, isAdmin, { buyerUserId, month, year } = {}) {

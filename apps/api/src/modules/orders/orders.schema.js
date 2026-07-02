@@ -4,9 +4,9 @@ const createFromRfqSchema = z.object({ rfq_id: z.coerce.number().int().positive(
 const rejectSchema = z.object({ reason: z.string().min(10).max(500) }).strict();
 const cancelSchema = z.object({ reason: z.string().max(500).optional() }).strict();
 const returnSchema = z.object({
-  order_item_id: z.string().uuid(),
+  order_item_id: z.coerce.number().int().positive(),
   quantity: z.number().int().min(1),
   reason: z.string().min(20).max(1000),
-  return_type: z.enum(['DAMAGED', 'WRONG_ITEM', 'QUALITY_ISSUE', 'NOT_AS_DESCRIBED', 'OTHER']).default('OTHER'),
+  return_type: z.enum(['DAMAGED', 'WRONG_ITEM', 'QUALITY_ISSUE', 'SHORT_SHIPPED', 'LATE_DELIVERY', 'BUYER_REMORSE', 'OTHER']).default('OTHER'),
 }).strict();
 module.exports = { createSchema, createFromRfqSchema, rejectSchema, cancelSchema, returnSchema };

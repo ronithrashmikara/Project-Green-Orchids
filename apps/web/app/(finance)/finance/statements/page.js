@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import { PageHeader } from '@/components/domain/DashboardUI';
 import { Button, Input, Select } from '@/components/ui/Button';
-import { StatusBadge } from '@/components/domain/StatusBadge';
 import { Spinner } from '@/components/ui/Spinner';
 import { formatLKR } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -62,15 +61,19 @@ export default function StatementsPage() {
         <div className="space-y-2">
           <h3 className="font-medium text-sm text-gray-700">Statement for {statement.month}/{statement.year}</h3>
           <div className="bg-white rounded border p-4 space-y-2 text-sm">
-            {statement.invoices.length === 0 ? (
-              <p className="text-gray-400 py-4 text-center">No invoices issued in this period</p>
-            ) : statement.invoices.map((inv) => (
-              <div key={inv.id} className="flex justify-between items-center border-b py-1">
-                <span>{inv.invoice_no} <StatusBadge status={inv.status} /></span>
-                <span>{formatLKR(inv.total_amount)}</span>
+            <div className="flex justify-between border-b py-1 text-gray-500">
+              <span>Opening balance</span>
+              <span>{formatLKR(statement.openingBalance)}</span>
+            </div>
+            {statement.entries.length === 0 ? (
+              <p className="text-gray-400 py-4 text-center">No activity in this period</p>
+            ) : statement.entries.map((e, i) => (
+              <div key={i} className="flex justify-between border-b py-1">
+                <span>{e.description}</span>
+                <span className={e.type === 'credit' ? 'text-green-700' : 'text-red-700'}>{e.type === 'credit' ? '-' : '+'}{formatLKR(e.amount)}</span>
               </div>
             ))}
-            <div className="flex justify-between font-bold pt-2"><span>Total for period</span><span>{formatLKR(statement.total)}</span></div>
+            <div className="flex justify-between font-bold pt-2"><span>Closing balance</span><span>{formatLKR(statement.closingBalance)}</span></div>
           </div>
         </div>
       )}

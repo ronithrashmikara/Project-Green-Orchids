@@ -1,0 +1,14 @@
+const { Router } = require('express');
+const c = require('./tiers.controller');
+const { requireAuth } = require('../../middleware/auth');
+const { requirePermission } = require('../../middleware/rbac');
+const { validate } = require('../../middleware/validate');
+const { createSchema, updateSchema } = require('./tiers.schema');
+const r = Router();
+r.use(requireAuth, requirePermission('user.manage'));
+r.get('/', c.list);
+r.post('/', validate({ body: createSchema }), c.create);
+r.patch('/:id', validate({ body: updateSchema }), c.update);
+r.put('/:id', validate({ body: createSchema }), c.update);
+r.delete('/:id', c.remove);
+module.exports = r;

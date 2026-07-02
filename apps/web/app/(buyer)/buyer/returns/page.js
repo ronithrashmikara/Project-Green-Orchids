@@ -19,8 +19,15 @@ export default function ReturnsListPage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await api.get('/returns');
-        setReturns(res.data.returns || res.data.data || res.data);
+        const res = await api.get('/rma');
+        setReturns((res.data.data || []).map((r) => ({
+          id: r.id,
+          rmaNo: r.rma_no,
+          orderNo: r.order_no,
+          createdAt: r.created_at,
+          reason: r.reason_detail || r.reason_category,
+          status: r.status,
+        })));
       } catch {}
       setLoading(false);
     })();

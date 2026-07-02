@@ -37,10 +37,12 @@ const STATE_MACHINES = {
   },
   RMA: {
     transitions: [
-      { from: 'PENDING',  to: 'APPROVED',  roles: ['ADMIN', 'FINANCE'] },
-      { from: 'PENDING',  to: 'REJECTED',  roles: ['ADMIN', 'FINANCE'] },
-      { from: 'PENDING',  to: 'CANCELLED', roles: ['BUYER'] },
-      { from: 'APPROVED', to: 'RESOLVED',  roles: ['ADMIN', 'FINANCE'] },
+      { from: 'PENDING',       to: 'APPROVED',      roles: ['ADMIN', 'FINANCE'] },
+      { from: 'PENDING',       to: 'REJECTED',       roles: ['ADMIN', 'FINANCE'] },
+      { from: 'PENDING',       to: 'CANCELLED',      roles: ['BUYER'] },
+      { from: 'APPROVED',      to: 'ITEM_RECEIVED',  roles: ['ADMIN', 'FINANCE'] },
+      { from: 'APPROVED',      to: 'RESOLVED',       roles: ['ADMIN', 'FINANCE'] },
+      { from: 'ITEM_RECEIVED', to: 'RESOLVED',       roles: ['ADMIN', 'FINANCE'] },
     ],
   },
   DELIVERY: {

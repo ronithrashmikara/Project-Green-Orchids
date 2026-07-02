@@ -3,19 +3,20 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
-import { Button, Input, Textarea, Select } from '@/components/ui/Button';
+import { Button, Textarea, Select } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { FileUpload } from '@/components/ui/FileUpload';
-import { Spinner, ErrorState } from '@/components/ui/Spinner';
+import { Spinner } from '@/components/ui/Spinner';
 import { PageHeader } from '@/components/domain/DashboardUI';
 import toast from 'react-hot-toast';
 
 const REASONS = [
-  { value: 'damaged', label: 'Damaged on Delivery' },
-  { value: 'wrong_item', label: 'Wrong Item' },
-  { value: 'quality', label: 'Quality Issue' },
-  { value: 'short_ship', label: 'Short Shipment' },
-  { value: 'other', label: 'Other' },
+  { value: 'DAMAGED', label: 'Damaged on Delivery' },
+  { value: 'WRONG_ITEM', label: 'Wrong Item' },
+  { value: 'QUALITY_ISSUE', label: 'Quality Issue' },
+  { value: 'SHORT_SHIPPED', label: 'Short Shipment' },
+  { value: 'LATE_DELIVERY', label: 'Late Delivery' },
+  { value: 'BUYER_REMORSE', label: 'Changed My Mind' },
+  { value: 'OTHER', label: 'Other' },
 ];
 
 export default function NewReturnPage() {
@@ -24,58 +25,55 @@ export default function NewReturnPage() {
   const preselectedOrderId = searchParams.get('orderId');
 
   const [orders, setOrders] = useState([]);
+  const [orderItems, setOrderItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     orderId: preselectedOrderId || '',
-    items: [],
+    orderItemId: '',
+    quantity: 1,
+    returnType: 'DAMAGED',
     reason: '',
-    detail: '',
-    evidence: [],
   });
 
   useEffect(() => {
     (async () => {
       try {
         const res = await api.get('/orders?status=DELIVERED');
-        setOrders(res.data.orders || res.data.data || res.data);
+        setOrders(res.data.data || []);
       } catch {} finally { setLoading(false); }
     })();
   }, []);
 
   useEffect(() => {
-    if (!form.orderId) return;
+    if (!form.orderId) { setOrderItems([]); return; }
     api.get(`/orders/${form.orderId}`).then((res) => {
-      setForm((f) => ({ ...f, items: (res.data.items || []).map((item) => ({ productId: item.productId, productName: item.productName, quantity: 0, maxQty: item.quantity })) }));
-    }).catch(() => {});
+      const data = res.data.data || res.data;
+      setOrderItems(data.items || []);
+      setForm((f) => ({ ...f, orderItemId: '' }));
+    }).catch(() => setOrderItems([]));
   }, [form.orderId]);
 
-  const updateItem = (idx, qty) => {
-    setForm((f) => ({
-      ...f,
-      items: f.items.map((item, i) => i === idx ? { ...item, quantity: Math.min(Math.max(0, parseInt(qty) || 0), item.maxQty) } : item),
-    }));
-  };
+  const selectedItem = orderItems.find((i) => String(i.id) === String(form.orderItemId));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.reason) { toast.error('Select a reason'); return; }
-    if ((form.detail || '').length < 20) { toast.error('Description must be at least 20 characters'); return; }
-    const returnItems = form.items.filter((i) => i.quantity > 0);
-    if (returnItems.length === 0) { toast.error('Select at least one item to return'); return; }
+    if (!form.orderId) return toast.error('Select an order');
+    if (!form.orderItemId) return toast.error('Select an item');
+    if ((form.reason || '').length < 20) return toast.error('Description must be at least 20 characters');
+    if (selectedItem && form.quantity > selectedItem.qty) return toast.error(`Quantity exceeds delivered (${selectedItem.qty})`);
     setSubmitting(true);
     try {
-      const formData = new FormData();
-      formData.append('orderId', form.orderId);
-      formData.append('reason', form.reason);
-      formData.append('detail', form.detail);
-      formData.append('items', JSON.stringify(returnItems));
-      form.evidence.forEach((f) => formData.append('evidence', f));
-      const res = await api.post('/returns', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const res = await api.post(`/orders/${form.orderId}/request-return`, {
+        order_item_id: Number(form.orderItemId),
+        quantity: Number(form.quantity),
+        reason: form.reason,
+        return_type: form.returnType,
+      });
       toast.success('Return request submitted');
-      router.push(`/buyer/returns/${res.data.id}`);
+      router.push(`/buyer/returns/${res.data.data.id}`);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to submit');
+      toast.error(err.response?.data?.error?.message || 'Failed to submit');
     } finally {
       setSubmitting(false);
     }
@@ -92,28 +90,28 @@ export default function NewReturnPage() {
             label="Select Delivered Order"
             value={form.orderId}
             onChange={(e) => setForm((f) => ({ ...f, orderId: e.target.value }))}
-            options={orders.map((o) => ({ value: o.id, label: `#${o.orderNo || o.id} - ${o.date || ''}` }))}
+            options={[{ value: '', label: 'Select order...' }, ...orders.map((o) => ({ value: o.id, label: `#${o.order_no || o.id}` }))]}
           />
 
-          {form.items.length > 0 && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Items to Return</label>
-              <div className="space-y-2">
-                {form.items.map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-3 p-2 bg-gray-50 rounded">
-                    <span className="text-sm flex-1">{item.productName}</span>
-                    <span className="text-xs text-gray-500">Max: {item.maxQty}</span>
-                    <input type="number" min={0} max={item.maxQty} value={item.quantity} onChange={(e) => updateItem(idx, e.target.value)} className="w-20 px-2 py-1 border rounded text-sm" placeholder="Qty" />
-                  </div>
-                ))}
-              </div>
-            </div>
+          {orderItems.length > 0 && (
+            <>
+              <Select
+                label="Item to Return"
+                value={form.orderItemId}
+                onChange={(e) => setForm((f) => ({ ...f, orderItemId: e.target.value }))}
+                options={[{ value: '', label: 'Select item...' }, ...orderItems.map((i) => ({ value: i.id, label: `${i.product_name} (delivered: ${i.qty})` }))]}
+              />
+              {selectedItem && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Quantity to return (max {selectedItem.qty})</label>
+                  <input type="number" min={1} max={selectedItem.qty} value={form.quantity} onChange={(e) => setForm((f) => ({ ...f, quantity: Math.min(Math.max(1, parseInt(e.target.value) || 1), selectedItem.qty) }))} className="w-24 px-2 py-1.5 border rounded text-sm" />
+                </div>
+              )}
+            </>
           )}
 
-          <Select label="Reason" value={form.reason} onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))} options={REASONS} />
-          <Textarea label="Detail (min 20 characters)" value={form.detail} onChange={(e) => setForm((f) => ({ ...f, detail: e.target.value }))} />
-
-          <FileUpload label="Upload evidence (photos)" onUpload={(file) => setForm((f) => ({ ...f, evidence: [...f.evidence, file] }))} />
+          <Select label="Reason" value={form.returnType} onChange={(e) => setForm((f) => ({ ...f, returnType: e.target.value }))} options={REASONS} />
+          <Textarea label="Description (min 20 characters)" value={form.reason} onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))} />
 
           <div className="flex justify-end gap-3">
             <Button variant="outline" type="button" onClick={() => router.back()}>Cancel</Button>

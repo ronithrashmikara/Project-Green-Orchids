@@ -28,7 +28,7 @@ export default function ReportsPage() {
       const params = new URLSearchParams({ view: tab });
       if (dateFrom) params.set('dateFrom', dateFrom);
       if (dateTo) params.set('dateTo', dateTo);
-      const res = await api.get(`/admin/reports?${params}`).catch(() => ({ data: { series: [], summary: {} } }));
+      const res = await api.get(`/reports?${params}`).catch(() => ({ data: { series: [], summary: {} } }));
       setData(res.data);
       setLoading(false);
     })();
@@ -39,7 +39,7 @@ export default function ReportsPage() {
       const params = new URLSearchParams({ view: tab, format: 'csv' });
       if (dateFrom) params.set('dateFrom', dateFrom);
       if (dateTo) params.set('dateTo', dateTo);
-      const res = await api.get(`/admin/reports/export?${params}`, { responseType: 'blob' });
+      const res = await api.get(`/reports/export?${params}`, { responseType: 'blob' });
       const url = URL.createObjectURL(new Blob([res.data]));
       const a = document.createElement('a'); a.href = url; a.download = `report-${tab}.csv`; a.click();
     } catch { toast.error('Export failed'); }
@@ -118,9 +118,12 @@ export default function ReportsPage() {
 
       {data?.summary && (
         <div className="grid grid-cols-4 gap-4">
-          {Object.entries(data.summary).map(([key, val]) => (
-            <KpiCard key={key} title={key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())} value={typeof val === 'number' ? formatLKR(val) : val} />
-          ))}
+          {Object.entries(data.summary).map(([key, val]) => {
+            const isMoney = /revenue|spend|exposure/i.test(key);
+            return (
+              <KpiCard key={key} title={key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())} value={typeof val === 'number' && isMoney ? formatLKR(val) : val} />
+            );
+          })}
         </div>
       )}
 
