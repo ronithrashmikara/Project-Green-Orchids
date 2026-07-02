@@ -15,6 +15,20 @@ A full-stack B2B wholesale commerce platform for a Sri Lankan orchid exporter �
 
 ---
 
+## Status
+
+All core B2B workflows are implemented and verified end-to-end: buyer onboarding
+(register → email OTP verify → admin approval), catalogue → cart → order →
+stock reservation, RFQ → quote → convert to order, invoicing with partial
+payments to exactly PAID, RMA returns with real stock movements, buyer tiers,
+inventory, business-intelligence reporting, CMS (including a media library),
+and a full security/audit panel (login history, session force-logout,
+locked-account unlock, audit log). See
+[`docs/SYSTEM-SNAPSHOT-2026-07-02-2200.md`](docs/SYSTEM-SNAPSHOT-2026-07-02-2200.md)
+for the latest detailed session report — what was fixed, what was verified live,
+and what's still open (frontend regex validation, type-to-confirm dialogs,
+catalogue image assets).
+
 ## Public Homepage
 
 ![Homepage](docs/screenshots/homepage.png)
@@ -43,15 +57,19 @@ Four distinct role-based portals, each with a clean slate-900 sidebar and white 
 
 | Module | Capabilities |
 |---|---|
-| **Catalogue** | 500+ orchid SKUs, categories, supplier links, images, tier pricing |
-| **RFQ → Quote** | Buyers submit requests, admin quotes, converts to order on acceptance |
-| **Orders** | Full lifecycle: PENDING → CONFIRMED → ALLOCATED → DISPATCHED → DELIVERED |
-| **Credit & Invoicing** | Per-buyer credit limits, NET-15/30/45/60 terms, invoice generation |
-| **Payments** | Record incoming payments, auto-reconcile to invoices |
-| **RMA / Returns** | Return merchandise authorisation with reason tracking |
-| **Delivery** | Delivery coordinator portal, track dispatched orders |
-| **CMS** | Admin-editable public homepage — hero, features, testimonials |
-| **RBAC** | 5 roles (Admin, Trade Buyer, Finance Officer, Inventory Manager, Delivery Coordinator) with granular permissions |
+| **Catalogue** | 500+ orchid SKUs, categories, supplier links, images, tier pricing, admin create/edit with bulk pricing tiers |
+| **RFQ → Quote** | Buyers submit requests, admin reviews & quotes, buyer accepts and converts to a real order |
+| **Orders** | Full lifecycle: PENDING_APPROVAL → APPROVED → DISPATCHED → DELIVERED, with transaction-safe stock reservation |
+| **Buyer Tiers & Credit** | Silver/Gold/Platinum tiers, per-buyer credit limits, NET-30/45/60 terms, buyer approval workflow |
+| **Invoicing & Payments** | Invoice generation, partial payment recording, payment reversal, statements & aging report |
+| **RMA / Returns** | Return request → admin approval → item received (real stock movement) → resolution with invoice credit |
+| **Delivery** | Delivery coordinator portal, dispatch/in-transit/delivered tracking, POD upload |
+| **Inventory** | Stock dashboard, movement ledger, low-stock/dead-stock alerts, product workspace |
+| **Reporting & BI** | 8-view dashboard — sales trend, category performance, top products, buyer behaviour, credit risk, inventory turnover, supplier contribution, returns analytics |
+| **CMS** | Admin-editable homepage content blocks + a media library (image upload/list/delete) |
+| **Security & Audit** | Login history, active-session listing with force-logout, locked-account unlock, audit log explorer, access-window settings |
+| **Public marketing pages** | About, Contact, Pricing, Trade Terms, Help Centre, Privacy, Terms of Service |
+| **RBAC** | 5 roles (Admin, Trade Buyer, Finance Officer, Inventory Manager, Delivery Coordinator) with granular, DB-driven permissions |
 
 ---
 
@@ -81,17 +99,13 @@ npm install
 
 ### 2. Set up the database
 
-Create a database named `project_green` and run the migrations:
+Create a database named `project_green` and run every migration in order (numbered, `apps/api/migrations/0001` through the latest — currently `0014`):
 
 ```bash
 psql -U postgres -c "CREATE DATABASE project_green;"
-psql -U postgres -d project_green -f apps/api/migrations/0001_extensions.sql
-psql -U postgres -d project_green -f apps/api/migrations/0002_roles_permissions.sql
-psql -U postgres -d project_green -f apps/api/migrations/0003_users_auth.sql
-psql -U postgres -d project_green -f apps/api/migrations/0004_trade_catalogue.sql
-psql -U postgres -d project_green -f apps/api/migrations/0005_pricing_rfq_cart_orders.sql
-psql -U postgres -d project_green -f apps/api/migrations/0006_invoices_payments_rma_delivery.sql
-psql -U postgres -d project_green -f apps/api/migrations/0007_crosscutting.sql
+for f in apps/api/migrations/*.sql; do
+  psql -U postgres -d project_green -f "$f"
+done
 ```
 
 ### 3. Seed demo data
@@ -118,6 +132,13 @@ PORT=5000
 JWT_ACCESS_SECRET=your-secret
 JWT_REFRESH_SECRET=your-refresh-secret
 CORS_ORIGIN=http://localhost:3000
+
+# Optional — without these, emails just log to the console in dev
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-gmail-address
+SMTP_PASS=your-gmail-app-password
+EMAIL_FROM=your-gmail-address
 ```
 
 ### 5. Start the servers
@@ -144,10 +165,12 @@ After seeding, log in at `http://localhost:3000/login`:
 | Role | Email | Password |
 |---|---|---|
 | Admin | `admin@example.invalid` | `Staff@1234` |
-| Trade Buyer | `buyer@example.invalid` | `Buyer@1234` |
 | Finance Officer | `finance@example.invalid` | `Staff@1234` |
 | Inventory Manager | `inventory@example.invalid` | `Staff@1234` |
 | Delivery Coordinator | `delivery@example.invalid` | `Staff@1234` |
+| Trade Buyer | `buyer1@example.invalid` … `buyer8@example.invalid` | `Buyer@1234` |
+
+> Note: `buyer@example.invalid` (no number) is seeded as a staff-style account and uses `Staff@1234`, not `Buyer@1234` — the numbered `buyer1`–`buyer8` accounts are the real trade buyers.
 
 ---
 
@@ -170,8 +193,14 @@ project-green/
 │           └── (public)/     # Public site (homepage, login, register)
 ├── scripts/
 │   └── seed.js               # Database seeder
-└── docs/                     # Documentation & screenshots
+└── docs/                     # Documentation, snapshots & screenshots
 ```
+
+Backend modules live under `apps/api/src/modules/` — each follows the same
+`routes → controller → service → repository (+ schema)` shape: `auth`, `users`,
+`buyers`, `suppliers`, `products`, `pricing`, `tiers`, `rfq`, `cart`, `orders`,
+`invoices`, `payments`, `finance`, `rma`, `delivery`, `inventory`, `reports`,
+`security`, `cms`, `notifications`, `compat`.
 
 ---
 
