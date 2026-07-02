@@ -10,7 +10,6 @@ const globalLimiter = rateLimit({
   max: isDevelopment ? 5000 : 300,
   standardHeaders: true,
   legacyHeaders: false,
-  trustProxy: true,
   message: {
     success: false,
     error: { code: 'RATE_LIMITED', message: 'Too many requests, please try again later' },
@@ -25,7 +24,6 @@ const authLimiter = rateLimit({
   max: isDevelopment ? 5000 : 10,
   standardHeaders: true,
   legacyHeaders: false,
-  trustProxy: true,
   message: {
     success: false,
     error: { code: 'RATE_LIMITED', message: 'Too many auth attempts, please try again later' },
@@ -40,7 +38,6 @@ const forgotPasswordLimiter = rateLimit({
   max: isDevelopment ? 50 : 3,
   standardHeaders: true,
   legacyHeaders: false,
-  trustProxy: true,
   message: {
     success: false,
     error: { code: 'RATE_LIMITED', message: 'Too many password reset attempts, please try again later' },
@@ -55,7 +52,6 @@ const reportLimiter = rateLimit({
   max: isDevelopment ? 500 : 30,
   standardHeaders: true,
   legacyHeaders: false,
-  trustProxy: true,
   message: {
     success: false,
     error: { code: 'RATE_LIMITED', message: 'Too many report requests, please try again later' },

@@ -18,6 +18,12 @@ setupGlobalHandlers();
 
 const app = express();
 
+// Trust the first hop (Render's load balancer in prod, the Next.js dev
+// rewrite proxy locally) so req.ip / X-Forwarded-For resolve to the real
+// client IP instead of the proxy's — required for express-rate-limit to
+// key correctly, and required by our own security spec (B8).
+app.set('trust proxy', 1);
+
 // ── Middleware Chain ──
 app.use(helmet());
 app.use(cors({
