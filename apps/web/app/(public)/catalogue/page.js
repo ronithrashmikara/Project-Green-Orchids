@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { PublicFooter } from '@/components/layout/PublicChrome';
 
 const NAV = [
   { label: 'Home', href: '/' },
   { label: 'Catalogue', href: '/catalogue', active: true },
-  { label: 'Pricing', href: '/catalogue#pricing' },
+  { label: 'Pricing', href: '/pricing' },
   { label: 'RFQ', href: '/register' },
 ];
 
@@ -246,41 +247,7 @@ export default function CataloguePage() {
         </div>
       </section>
 
-      {/* ---------- Footer ---------- */}
-      <footer className="relative z-10 border-t border-white/10 bg-black px-6 pb-10 pt-16">
-        <div className="mx-auto grid max-w-6xl gap-12 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
-          <div>
-            <p className="font-serif-display text-3xl text-white">Orchids</p>
-            <p className="mt-4 max-w-xs text-sm leading-6 text-white/55">
-              Premium orchid wholesale — a living catalogue, transparent trade pricing and a
-              complete order-to-delivery portal.
-            </p>
-            <Link href="/register" className="mt-6 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-white/90">
-              Apply for trade access <span aria-hidden>→</span>
-            </Link>
-          </div>
-          {[
-            { h: 'Shop', links: [['Catalogue', '/catalogue'], ['Pricing', '/catalogue#pricing'], ['Request a quote', '/register']] },
-            { h: 'Company', links: [['About', '/#about'], ['Sign in', '/login'], ['Apply', '/register']] },
-            { h: 'Support', links: [['Contact', 'mailto:trade@orchids.lk'], ['Trade terms', '/#about'], ['Help centre', '/#about']] },
-          ].map((col) => (
-            <div key={col.h}>
-              <p className="eyebrow text-emerald-300/80">{col.h}</p>
-              <ul className="mt-4 space-y-3">
-                {col.links.map(([label, href]) => (
-                  <li key={label}>
-                    <Link href={href} className="text-sm text-white/60 transition hover:text-white">{label}</Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-        <div className="mx-auto mt-14 flex max-w-6xl flex-col items-center justify-between gap-4 border-t border-white/10 pt-7 text-xs font-medium text-white/40 sm:flex-row">
-          <span>© {new Date().getFullYear()} ORCHIDS Wholesale · Colombo, Sri Lanka</span>
-          <span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Trade desk open</span>
-        </div>
-      </footer>
+      <PublicFooter />
     </main>
   );
 }

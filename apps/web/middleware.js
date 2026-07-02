@@ -12,6 +12,13 @@ export function middleware(request) {
     pathname.startsWith('/verify-email') ||
     pathname.startsWith('/forgot-password') ||
     pathname.startsWith('/reset-password') ||
+    pathname.startsWith('/about') ||
+    pathname.startsWith('/contact') ||
+    pathname.startsWith('/pricing') ||
+    pathname.startsWith('/trade-terms') ||
+    pathname.startsWith('/help-centre') ||
+    pathname.startsWith('/privacy') ||
+    pathname.startsWith('/terms') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api')
   ) {

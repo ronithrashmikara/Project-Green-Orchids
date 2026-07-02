@@ -6,7 +6,7 @@ import Link from 'next/link';
 import axios from 'axios';
 import { AuthBackdrop, AuthCard, AuthInput, AuthButton, IconTile } from '@/components/auth/AuthUI';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 export default function ResetPasswordPage() {
   const { token } = useParams();
@@ -28,7 +28,7 @@ export default function ResetPasswordPage() {
       await axios.post(`${API_URL}/auth/reset-password/${token}`, { password });
       setSuccess(true);
     } catch (err) {
-      setError(err.response?.data?.message || 'Reset failed. The link may have expired.');
+      setError(err.response?.data?.error?.message || err.response?.data?.message || 'Reset failed. The link may have expired.');
     } finally {
       setLoading(false);
     }
@@ -55,7 +55,10 @@ export default function ResetPasswordPage() {
         <Link href="/" className="font-serif-display text-xl text-white">Orchids</Link>
         <h1 className="mt-5 font-serif-display text-3xl text-white">Set a new password</h1>
         {error && (
-          <div className="mt-4 rounded-2xl border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm font-medium text-rose-300">{error}</div>
+          <div className="mt-4 rounded-2xl border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm font-medium text-rose-300">
+            <p>{error}</p>
+            <Link href="/forgot-password" className="mt-2 inline-block underline hover:text-rose-200">Request a new reset link</Link>
+          </div>
         )}
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <AuthInput label="New password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
