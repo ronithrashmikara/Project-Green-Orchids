@@ -8,6 +8,7 @@ const { sendMail } = require('../../config/mailer');
 const { AppError } = require('../../middleware/errors');
 const { writeAudit } = require('../../middleware/audit');
 const authRepository = require('./auth.repository');
+const { bustUserStatus } = require('../../middleware/auth');
 
 const BCRYPT_ROUNDS = 12;
 const OTP_EXPIRY_MINUTES = 15;
@@ -345,6 +346,8 @@ const authService = {
       await authRepository.revokeAllUserSessions(client, emailToken.user_id);
       await authRepository.markTokenUsed(client, emailToken.id);
     });
+    // Same-dyno instant effect instead of waiting out the 30s status cache (F4.1 pattern).
+    bustUserStatus(emailToken.user_id);
 
     try {
       const user = await authRepository.findUserById(emailToken.user_id);
@@ -379,6 +382,7 @@ const authService = {
       await authRepository.updateUserPassword(client, userId, passwordHash);
       await authRepository.revokeAllUserSessions(client, userId);
     });
+    bustUserStatus(userId);
   },
 
   async updateProfile(userId, updates) {

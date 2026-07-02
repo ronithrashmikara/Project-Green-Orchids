@@ -36,13 +36,13 @@ async function requireAuth(req, res, next) {
       });
     }
 
-    // Check user status cache
+    // Check user status + password-change-invalidation cache
     const cacheKey = `user_status_${payload.sub}`;
-    let userStatus = statusCache.get(cacheKey);
+    let cached = statusCache.get(cacheKey);
 
-    if (!userStatus) {
+    if (!cached) {
       const result = await query(
-        'SELECT id, email, status, role_id FROM users WHERE id = $1',
+        'SELECT id, email, status, role_id, password_changed_at FROM users WHERE id = $1',
         [payload.sub]
       );
       if (!result.rows.length) {
@@ -52,19 +52,24 @@ async function requireAuth(req, res, next) {
         });
       }
       const user = result.rows[0];
-      if (user.status !== 'ACTIVE') {
-        statusCache.set(cacheKey, user.status);
-        return res.status(403).json({
-          success: false,
-          error: { code: 'ACCOUNT_INACTIVE', message: `Account is ${user.status.toLowerCase()}` },
-        });
-      }
-      userStatus = user.status;
-      statusCache.set(cacheKey, userStatus);
-    } else if (userStatus !== 'ACTIVE') {
+      cached = { status: user.status, passwordChangedAt: user.password_changed_at };
+      statusCache.set(cacheKey, cached);
+    }
+
+    if (cached.status !== 'ACTIVE') {
       return res.status(403).json({
         success: false,
-        error: { code: 'ACCOUNT_INACTIVE', message: `Account is ${userStatus.toLowerCase()}` },
+        error: { code: 'ACCOUNT_INACTIVE', message: `Account is ${cached.status.toLowerCase()}` },
+      });
+    }
+
+    // A password reset/change must kill access tokens issued before it, not
+    // just refresh tokens/sessions (F4.1) — otherwise a stolen 15-minute
+    // access token keeps working straight through a reset meant to revoke it.
+    if (payload.iat && cached.passwordChangedAt && payload.iat * 1000 < new Date(cached.passwordChangedAt).getTime()) {
+      return res.status(401).json({
+        success: false,
+        error: { code: 'TOKEN_INVALIDATED', message: 'Password was changed after this token was issued; please sign in again' },
       });
     }
 

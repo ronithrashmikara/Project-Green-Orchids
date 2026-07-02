@@ -1,7 +1,14 @@
 const { query, tx } = require('../../config/db');
 const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 
 const run = (client, text, params) => (client ? client.query(text, params) : query(text, params));
+
+// email_tokens.token_hash must never hold the raw token/OTP (it's a bearer
+// credential — anyone with DB read access could otherwise reset a password
+// or verify an email without ever seeing the mail). Hash it the same way
+// auth_sessions hashes refresh tokens (SHA-256) before it touches storage.
+const hashEmailToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 
 const authRepository = {
   async findUserByEmail(email) {
@@ -58,7 +65,7 @@ const authRepository = {
     const result = await run(client,
       `INSERT INTO email_tokens (user_id, token_hash, purpose, expires_at)
        VALUES ($1, $2, $3, $4) RETURNING *`,
-      [userId, token, purpose, expiresAt]
+      [userId, hashEmailToken(token), purpose, expiresAt]
     );
     return result.rows[0];
   },
@@ -67,7 +74,7 @@ const authRepository = {
     const purpose = type === 'PASSWORD_RESET' ? 'password_reset' : type === 'INVITATION' ? 'invitation' : 'email_verify';
     const result = await query(
       `SELECT * FROM email_tokens WHERE token_hash = $1 AND purpose = $2 AND used_at IS NULL AND expires_at > NOW()`,
-      [token, purpose]
+      [hashEmailToken(token), purpose]
     );
     return result.rows[0] || null;
   },
@@ -78,7 +85,7 @@ const authRepository = {
     const purpose = type === 'PASSWORD_RESET' ? 'password_reset' : type === 'INVITATION' ? 'invitation' : 'email_verify';
     const result = await query(
       `SELECT * FROM email_tokens WHERE user_id = $1 AND token_hash = $2 AND purpose = $3 AND used_at IS NULL AND expires_at > NOW()`,
-      [userId, token, purpose]
+      [userId, hashEmailToken(token), purpose]
     );
     return result.rows[0] || null;
   },
@@ -213,8 +220,12 @@ const authRepository = {
   },
 
   async updateUserPassword(client, userId, passwordHash) {
+    // password_changed_at is what lets requireAuth reject access tokens that
+    // were issued before this change (F4.1) — a stolen access token survives
+    // a password reset otherwise, since only refresh tokens/sessions were
+    // being revoked.
     await run(client,
-      `UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2`,
+      `UPDATE users SET password_hash = $1, password_changed_at = NOW(), updated_at = NOW() WHERE id = $2`,
       [passwordHash, userId]
     );
   },
