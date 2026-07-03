@@ -36,18 +36,20 @@ const service = {
     const items = await repo.findCartItems(buyerId);
     const existing = items.find(i => i.product_id === data.product_id);
 
-    if (existing && existing.quantity + data.quantity > existing.stock_qty) {
-      throw new AppError('INSUFFICIENT_STOCK', `Only ${existing.stock_qty} available`, 400);
-    }
-
-    // Enforce MOQ at the point the buyer adds/increases quantity, not just at order submission
-    // (Finding: a below-MOQ item could sit in the cart indefinitely and only got caught at
-    // checkout, discarding the buyer's progress).
+    // Enforce MOQ and available stock at the point the buyer adds/increases quantity, not just
+    // at order submission (Finding: a below-MOQ or over-stock quantity could sit in the cart
+    // indefinitely and only got caught at checkout, discarding the buyer's progress). The old
+    // stock check here only ever looked at `existing`, so it silently did nothing for a
+    // brand-new cart line — any quantity of an out-of-stock product could be added.
     const product = await repo.findProductBasics(data.product_id);
     if (!product) throw new AppError('NOT_FOUND', 'Product not found', 404);
     const totalQty = (existing?.quantity || 0) + data.quantity;
     if (totalQty < product.moq) {
       throw new AppError('BELOW_MOQ', `${product.name} minimum order is ${product.moq}`, 400);
+    }
+    const available = Number(product.stock_qty) - Number(product.reserved_qty || 0);
+    if (totalQty > available) {
+      throw new AppError('INSUFFICIENT_STOCK', `Only ${available} available`, 400);
     }
 
     const item = await repo.addOrUpdate(buyerId, data.product_id, data.quantity);

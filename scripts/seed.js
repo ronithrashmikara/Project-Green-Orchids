@@ -164,6 +164,7 @@ async function clearData(pool) {
     'email_tokens',
     'login_history',
     'cms_blocks',
+    'cms_media',
     'users',
     'role_access_windows',
     'role_permissions',

@@ -12,7 +12,8 @@
     "build:api": "cd apps/api && npm run build",
     "build:web": "cd apps/web && npm run build",
     "seed": "cd apps/api && npm run seed",
-    "migrate": "cd apps/api && npm run migrate"
+    "migrate": "cd apps/api && npm run migrate",
+    "test": "node scripts/run-tests.js"
   },
   "dependencies": {
     "date-fns": "^2.30.0",

@@ -1,12 +1,56 @@
 const { query } = require('../../config/db');
+
+// The real cms_blocks table only has key/type/content(jsonb)/is_published/updated_by —
+// display fields like title/image_url/link_url/start_date/end_date/meta are folded into the
+// jsonb `content` blob instead of being separate columns (see cms.schema.js for why).
+function normalizeType(data, fallback) {
+  return data.type || data.block_type || fallback || 'TEXT';
+}
+
+function extraContentFields(data) {
+  const extra = {};
+  for (const k of ['title', 'image_url', 'link_url', 'start_date', 'end_date', 'meta']) {
+    if (data[k] !== undefined) extra[k] = data[k];
+  }
+  return extra;
+}
+
+function parseContent(content) {
+  if (content == null) return {};
+  if (typeof content === 'string') {
+    try { return JSON.parse(content); } catch (_) { return { text: content }; }
+  }
+  return content;
+}
+
+function buildContent(data, base = {}) {
+  const provided = data.content !== undefined ? parseContent(data.content) : {};
+  return { ...base, ...provided, ...extraContentFields(data) };
+}
+
 const repo = {
-  async findAll() { return (await query('SELECT * FROM cms_blocks ORDER BY updated_at DESC')).rows; },
+  async findAll(includeUnpublished) {
+    const where = includeUnpublished ? '' : 'WHERE is_published = true';
+    return (await query(`SELECT * FROM cms_blocks ${where} ORDER BY updated_at DESC`)).rows;
+  },
   async findByKey(key) { const r = await query('SELECT * FROM cms_blocks WHERE key = $1', [key]); return r.rows[0] || null; },
-  async create(data) { const r = await query('INSERT INTO cms_blocks (key, title, content, block_type, image_url, link_url, start_date, end_date, is_published, meta) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *', [data.key, data.title, data.content, data.block_type, data.image_url, data.link_url, data.start_date, data.end_date, data.is_published || false, data.meta]); return r.rows[0]; },
-  async update(key, data) {
-    const keys = Object.keys(data); if (!keys.length) return null;
-    const sets = keys.map((k,i)=>`${k}=$${i+2}`); const vals = keys.map(k=>data[k]);
-    const r = await query(`UPDATE cms_blocks SET ${sets.join(',')},updated_at=NOW() WHERE key=$1 RETURNING *`, [key, ...vals]);
+  async create(data, actorId) {
+    const r = await query(
+      'INSERT INTO cms_blocks (key, type, content, is_published, updated_by) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+      [data.key, normalizeType(data), JSON.stringify(buildContent(data)), data.is_published || false, actorId || null],
+    );
+    return r.rows[0];
+  },
+  async update(key, data, actorId) {
+    const existing = await this.findByKey(key);
+    if (!existing) return null;
+    const type = normalizeType(data, existing.type);
+    const content = buildContent(data, parseContent(existing.content));
+    const isPublished = data.is_published !== undefined ? data.is_published : existing.is_published;
+    const r = await query(
+      'UPDATE cms_blocks SET type=$1, content=$2, is_published=$3, updated_by=$4, updated_at=NOW() WHERE key=$5 RETURNING *',
+      [type, JSON.stringify(content), isPublished, actorId || null, key],
+    );
     return r.rows[0];
   },
   async togglePublish(key, isPublished) {

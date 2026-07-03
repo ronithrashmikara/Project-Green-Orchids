@@ -16,10 +16,11 @@ const usersRepository = {
   async findById(id) {
     const result = await query(
       `SELECT u.id, u.email, u.full_name AS name, u.status, u.role_id, u.last_login_at, u.created_at, u.updated_at, r.name as role_name,
-              ta.id as trade_account_id, ta.business_name, ta.account_status, ta.credit_limit, ta.tier
+              ta.id as trade_account_id, ta.business_name, ta.account_status, ta.credit_limit, bt.name as tier
        FROM users u
        LEFT JOIN roles r ON r.id = u.role_id
        LEFT JOIN trade_accounts ta ON ta.user_id = u.id
+       LEFT JOIN buyer_tiers bt ON bt.id = ta.tier_id
        WHERE u.id = $1`,
       [id]
     );
@@ -51,7 +52,7 @@ const usersRepository = {
     const countResult = await query('SELECT COUNT(*) FROM login_history WHERE user_id = $1', [userId]);
     const total = parseInt(countResult.rows[0].count, 10);
     const result = await query(
-      `SELECT * FROM login_history WHERE user_id = $1 ORDER BY attempted_at DESC LIMIT $2 OFFSET $3`,
+      `SELECT * FROM login_history WHERE user_id = $1 ORDER BY occurred_at DESC LIMIT $2 OFFSET $3`,
       [userId, limit, offset]
     );
     return { rows: result.rows, total };

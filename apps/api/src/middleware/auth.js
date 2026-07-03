@@ -66,7 +66,15 @@ async function requireAuth(req, res, next) {
     // A password reset/change must kill access tokens issued before it, not
     // just refresh tokens/sessions (F4.1) — otherwise a stolen 15-minute
     // access token keeps working straight through a reset meant to revoke it.
-    if (payload.iat && cached.passwordChangedAt && payload.iat * 1000 < new Date(cached.passwordChangedAt).getTime()) {
+    //
+    // payload.iat is JWT-standard whole seconds (truncated down); passwordChangedAt is a
+    // millisecond-precision timestamp. Comparing them raw meant a token issued in the very same
+    // wall-clock second as a password change could be spuriously flagged as "issued before the
+    // change" even when it was actually a fresh login using the new password issued afterwards
+    // — round iat up to the next full second before comparing so same-second tokens aren't
+    // penalized for something truncation caused, not something that actually happened.
+    const tokenIssuedAtMs = (payload.iat + 1) * 1000;
+    if (payload.iat && cached.passwordChangedAt && tokenIssuedAtMs < new Date(cached.passwordChangedAt).getTime()) {
       return res.status(401).json({
         success: false,
         error: { code: 'TOKEN_INVALIDATED', message: 'Password was changed after this token was issued; please sign in again' },

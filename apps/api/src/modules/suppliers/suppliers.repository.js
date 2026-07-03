@@ -13,7 +13,10 @@ const repo = {
     return { rows: r.rows, total };
   },
   async findById(id) { const r = await query('SELECT * FROM suppliers WHERE id = $1', [id]); return r.rows[0] || null; },
-  async create(data) { const r = await query('INSERT INTO suppliers (name, contact_person, email, phone, address, lead_time_days) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *', [data.name, data.contact_person, data.email, data.phone, data.address, data.lead_time_days]); return r.rows[0]; },
+  // COALESCE($6, 7): lead_time_days is optional on the create schema but NOT NULL in the
+  // schema (with its own DB default of 7) — passing an explicit `undefined` binds as SQL
+  // NULL, which overrides a column DEFAULT and previously violated the not-null constraint.
+  async create(data) { const r = await query('INSERT INTO suppliers (name, contact_person, email, phone, address, lead_time_days) VALUES ($1,$2,$3,$4,$5,COALESCE($6,7)) RETURNING *', [data.name, data.contact_person, data.email, data.phone, data.address, data.lead_time_days]); return r.rows[0]; },
   async update(id, data) { const keys = Object.keys(data); if (!keys.length) return; const sets = keys.map((k,i)=>`${k}=$${i+2}`); const values = keys.map(k=>data[k]); const r = await query(`UPDATE suppliers SET ${sets.join(',')}, updated_at=NOW() WHERE id=$1 RETURNING *`, [id, ...values]); return r.rows[0]; },
   // Soft delete - suppliers are referenced by products.supplier_id (NOT NULL FK), a hard
   // delete would fail for any supplier with products and cascade-orphan them otherwise.

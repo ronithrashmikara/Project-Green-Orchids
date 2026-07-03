@@ -2,10 +2,10 @@ const s = require('./cms.service');
 const { publicUrl } = require('../../middleware/upload');
 const { AppError } = require('../../middleware/errors');
 module.exports = {
-  list: async (r, res, n) => { try { const d = await s.list(); res.json({ success: true, data: d }); } catch (e) { n(e); } },
-  get: async (r, res, n) => { try { const d = await s.get(r.params.key); res.json({ success: true, data: d }); } catch (e) { n(e); } },
-  create: async (r, res, n) => { try { const d = await s.create(r.body); res.status(201).json({ success: true, data: d }); } catch (e) { n(e); } },
-  update: async (r, res, n) => { try { const d = await s.update(r.params.key, r.body); res.json({ success: true, data: d }); } catch (e) { n(e); } },
+  list: async (r, res, n) => { try { const d = await s.list(!!r.user); res.json({ success: true, data: d }); } catch (e) { n(e); } },
+  get: async (r, res, n) => { try { const d = await s.get(r.params.key, !!r.user); res.json({ success: true, data: d }); } catch (e) { n(e); } },
+  create: async (r, res, n) => { try { const d = await s.create(r.body, r.user.id); res.status(201).json({ success: true, data: d }); } catch (e) { n(e); } },
+  update: async (r, res, n) => { try { const d = await s.update(r.params.key, r.body, r.user.id); res.json({ success: true, data: d }); } catch (e) { n(e); } },
   togglePublish: async (r, res, n) => { try { const d = await s.togglePublish(r.params.key); res.json({ success: true, data: d }); } catch (e) { n(e); } },
 
   // Media endpoints intentionally return bare bodies (list: {files}, create: the
