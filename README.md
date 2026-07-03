@@ -10,6 +10,7 @@ A full-stack B2B wholesale commerce platform for a Sri Lankan orchid exporter �
 ![Express](https://img.shields.io/badge/API-Express-000?logo=express)
 ![PostgreSQL](https://img.shields.io/badge/DB-PostgreSQL-336791?logo=postgresql)
 ![Tailwind CSS](https://img.shields.io/badge/UI-Tailwind_CSS-06B6D4?logo=tailwindcss)
+[![CI](https://github.com/InfiniteBloom-max/Project-Green-Orchids/actions/workflows/ci.yml/badge.svg)](https://github.com/InfiniteBloom-max/Project-Green-Orchids/actions/workflows/ci.yml)
 
 </div>
 
@@ -36,10 +37,30 @@ code review alone):
 - [`docs/QA_FULL_SYSTEM_TEST_REPORT_2026-07-04.md`](docs/QA_FULL_SYSTEM_TEST_REPORT_2026-07-04.md) — the first strict pass (5 bugs, fixed same day)
 - [`docs/QA_FIX_VERIFICATION_2026-07-03.md`](docs/QA_FIX_VERIFICATION_2026-07-03.md) — the second strict pass (10 bugs, including the missing Delivery Coordinator portal, an RMA credit note that never updated its invoice, an admin lockout panel disconnected from the real lockout check, and a payment-reversal two-person rule that accepted a fabricated approver)
 
+On top of that, a real automated test suite now backs the API: 57 `node:test`
+integration tests (`npm test`) driving the actual Express app against an
+isolated database, covering every module and re-asserting all 15 bugs above so
+they can't silently regress. Writing those tests surfaced 8 more real bugs —
+role_id validated as a UUID when the real column is a smallint (staff-user
+creation was completely broken), two wrong SQL column names, a NULL-overrides-
+DEFAULT bug on supplier creation, an entirely broken CMS content-block module
+(wrong columns) plus a public content leak of unpublished drafts, a cart
+stock-check gap on brand-new lines, a seed-script FK-order gap, and a JWT
+timing race in password-change token invalidation — all fixed and now
+regression-tested.
+
+CI (GitHub Actions, badge above) runs on every push/PR to `main`/`develop`:
+spins up a real Postgres service container, syntax-checks the API, builds the
+web app, and runs the full test suite. Its first real run caught one more bug
+no local check had: the web app shipped a `tsconfig.json` for its `@/*` import
+alias despite being 100% JavaScript with no `typescript` dependency — it
+resolved by local accident but failed outright on a clean checkout. Fixed with
+the correct `jsconfig.json`.
+
 **Known gaps, honestly:**
-- No automated test suite backs this yet — every fix above was verified with live API calls + direct PostgreSQL queries, not CI.
-- Reports/BI, notification retry, credit monitor, and CMS content blocks (beyond media upload) have had lighter testing than the core commerce flow.
-- `scripts/seed.js`/`scripts/migrate.js` are now idempotent (see below) but the seeded demo dataset still accumulates whatever test data a session runs against it — reset with a fresh `npm run migrate && npm run seed` if you want a clean slate.
+- Zero automated coverage of the frontend itself — the test suite is API/DB-only; UI regressions still need manual browser QA.
+- Reports/BI, notification retry, credit monitor, and CMS content blocks are smoke-tested, not exhaustively.
+- `scripts/seed.js`/`scripts/migrate.js` are idempotent, but the seeded demo dataset still accumulates whatever a session runs against it — reset with a fresh `npm run migrate && npm run seed` for a clean slate.
 
 ## Public Homepage
 
@@ -95,6 +116,8 @@ Dispatch queue, in-transit tracking and proof-of-delivery upload for the Deliver
 - **Database:** PostgreSQL with full relational schema (migrations in `apps/api/migrations/`)
 - **Auth:** JWT (access + refresh tokens), bcrypt password hashing
 - **Emails:** Nodemailer (email verification, password reset)
+- **Testing:** Node's built-in `node:test` runner (no extra dependency), driving the real app against an isolated database
+- **CI:** GitHub Actions — Postgres service container, API/web build checks, full test suite on every push/PR
 
 ---
 
@@ -175,6 +198,21 @@ npx next start -p 3000
 
 ---
 
+## Testing
+
+```bash
+npm test
+```
+
+Runs `scripts/run-tests.js`, which migrates + seeds an isolated `..._test`
+database (derived from `DATABASE_URL`, never the real dev DB) and then runs
+the full `node:test` integration suite (57 tests) sequentially against a real
+instance of the app. No extra test framework to install. The same thing runs
+in CI on every push/PR — see the badge at the top of this file, or
+`.github/workflows/ci.yml`.
+
+---
+
 ## Demo Accounts
 
 After seeding, log in at `http://localhost:3000/login`:
@@ -195,11 +233,14 @@ After seeding, log in at `http://localhost:3000/login`:
 
 ```
 project-green/
+├── .github/workflows/
+│   └── ci.yml                # Postgres service + build + test on every push/PR
 ├── apps/
 │   ├── api/                  # Express REST API
 │   │   ├── migrations/       # PostgreSQL migration files
 │   │   └── src/
-│   │       └── modules/      # Feature modules (auth, orders, buyers, …)
+│   │       ├── modules/      # Feature modules (auth, orders, buyers, …), each with a *.test.js
+│   │       └── test/         # Shared node:test harness (helpers.js)
 │   └── web/                  # Next.js 14 frontend
 │       └── app/
 │           ├── (admin)/      # Admin portal pages
@@ -209,8 +250,10 @@ project-green/
 │           ├── (delivery)/   # Delivery coordinator pages
 │           └── (public)/     # Public site (homepage, login, register)
 ├── scripts/
-│   └── seed.js               # Database seeder
-└── docs/                     # Documentation, snapshots & screenshots
+│   ├── seed.js                # Database seeder (idempotent)
+│   ├── migrate.js             # Migration runner (idempotent, tracks applied files)
+│   └── run-tests.js           # Test-DB setup + node:test runner
+└── docs/                      # Documentation, snapshots & screenshots
 ```
 
 Backend modules live under `apps/api/src/modules/` — each follows the same
