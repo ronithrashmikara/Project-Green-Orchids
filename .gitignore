@@ -6,6 +6,8 @@ dist/
 .env
 .env.local
 *.env
+.env.*
+!apps/api/.env.example
 # os / ide
 .DS_Store
 Thumbs.db
