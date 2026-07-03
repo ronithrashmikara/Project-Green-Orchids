@@ -12,6 +12,8 @@ A full-stack B2B wholesale commerce platform for a Sri Lankan orchid exporter �
 ![Tailwind CSS](https://img.shields.io/badge/UI-Tailwind_CSS-06B6D4?logo=tailwindcss)
 [![CI](https://github.com/InfiniteBloom-max/Project-Green-Orchids/actions/workflows/ci.yml/badge.svg)](https://github.com/InfiniteBloom-max/Project-Green-Orchids/actions/workflows/ci.yml)
 
+**[Status](#status) · [Homepage](#public-homepage) · [Catalogue](#catalogue) · [Dashboards](#dashboards) · [Features](#features) · [Getting Started](#getting-started) · [Testing](#testing) · [Demo Accounts](#demo-accounts)**
+
 </div>
 
 ---
@@ -65,6 +67,34 @@ the correct `jsconfig.json`.
 ## Public Homepage
 
 ![Homepage](docs/media/screenshots/homepage.png)
+
+---
+
+## Catalogue
+
+523 products across 14 real categories (8 orchid varieties, 3 fertilizer
+types, 3 supply types), each with a real product photo — search, type/category
+filters, and live stock bands, all browsable before signing in:
+
+![Catalogue](docs/media/screenshots/catalogue.png)
+
+### Product photography
+
+Every product image is AI-generated (Stable Diffusion XL) from a fixed set of
+70 prompts — 5 distinct photo briefs per category, covering colour, form and
+packaging variety so the grid doesn't look repetitive:
+
+![Sample catalogue photos](docs/media/screenshots/catalogue-sample-images.png)
+
+The full prompt list lives in
+[`docs/image-assets/catalogue-image-generation-prompts.md`](docs/image-assets/catalogue-image-generation-prompts.md),
+and the generation pipeline — a free Colab GPU runtime running
+`diffusers` + SDXL — is captured as a runnable notebook in
+[`docs/image-assets/generate_catalogue_images_sdxl.ipynb`](docs/image-assets/generate_catalogue_images_sdxl.ipynb).
+`scripts/seed.js` maps each product's category to one of its 5 photos
+(round-robin), plus 10 flagship orchids get a specific named hero shot instead
+of the generic category rotation. `scripts/backfill_product_images.js` applies
+the same mapping to an already-seeded database without a destructive reseed.
 
 ---
 
