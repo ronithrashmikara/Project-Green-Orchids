@@ -121,6 +121,53 @@ const CATEGORY_TREE = {
 };
 
 // ---------------------------------------------------------------------------
+// Catalogue images — 70 AI-generated product photos (5 per category) live in
+// apps/web/public/images/catalogue/, named `{catNum}-{slug}-{variant}.png`.
+// 10 named orchids also have a specific hero shot in the `named/` subfolder.
+// ---------------------------------------------------------------------------
+const CATEGORY_IMAGE_MAP = {
+  'Cattleya':            { num: 1,  slug: 'cattleya' },
+  'Cymbidium':           { num: 2,  slug: 'cymbidium' },
+  'Dendrobium':          { num: 3,  slug: 'dendrobium' },
+  'Oncidium':            { num: 4,  slug: 'oncidium' },
+  'Paphiopedilum':       { num: 5,  slug: 'paphiopedilum' },
+  'Phalaenopsis':        { num: 6,  slug: 'phalaenopsis' },
+  'Vanda':               { num: 7,  slug: 'vanda' },
+  'Other Orchids':       { num: 8,  slug: 'other-orchids' },
+  'Granular Fertilizer': { num: 9,  slug: 'granular-fertilizer' },
+  'Liquid Fertilizer':   { num: 10, slug: 'liquid-fertilizer' },
+  'Organic Fertilizer':  { num: 11, slug: 'organic-fertilizer' },
+  'Pots':                { num: 12, slug: 'pots' },
+  'Media':               { num: 14, slug: 'media' },
+  'Tools':               { num: 13, slug: 'tools' },
+};
+
+const NAMED_PRODUCT_IMAGE_MAP = {
+  "Phalaenopsis 'Moth Orchid White'": '01-phalaenopsis-moth-white.png',
+  "Phalaenopsis 'Pink Fairy'":        '02-phalaenopsis-pink-fairy.png',
+  "Dendrobium 'Sonia Red'":           '03-dendrobium-sonia-red.png',
+  "Cattleya 'Purple Queen'":          '04-cattleya-purple-queen.png',
+  "Vanda 'Blue Magic'":               '05-vanda-blue-magic.png',
+  "Vanda 'Miss Joaquim'":             '06-vanda-miss-joaquim.png',
+  "Oncidium 'Golden Shower'":         '07-oncidium-golden-shower.png',
+  "Paphiopedilum 'Venus Slipper'":    '08-paphiopedilum-venus-slipper.png',
+  "Cymbidium 'Ruby Red'":             '09-cymbidium-ruby-red.png',
+  "Zygopetalum 'Blue Nectar'":        '10-zygopetalum-blue-nectar.png',
+};
+
+// Returns a stable local image URL for a product, or null if its category has
+// no catalogue image mapped (shouldn't happen — all 14 leaf categories are covered).
+function catalogueImageUrl(productId, productName, catName) {
+  const namedFile = NAMED_PRODUCT_IMAGE_MAP[productName];
+  if (namedFile) return `/images/catalogue/named/${namedFile}`;
+
+  const mapped = CATEGORY_IMAGE_MAP[catName];
+  if (!mapped) return null;
+  const variant = (productId % 5) + 1;
+  return `/images/catalogue/${String(mapped.num).padStart(2, '0')}-${mapped.slug}-${variant}.png`;
+}
+
+// ---------------------------------------------------------------------------
 // Clear existing data
 // ---------------------------------------------------------------------------
 async function clearData(pool) {
@@ -326,6 +373,7 @@ async function seed() {
 
     // 6a. Real orchid products (30)
     const realProductIds = [];
+    const productMeta = {}; // pid -> { name, catName }
     for (let i = 0; i < REAL_ORCHIDS.length; i++) {
       const orchid = REAL_ORCHIDS[i];
       const sku = `KOR-${String(i + 1).padStart(4, '0')}`;
@@ -362,6 +410,7 @@ async function seed() {
         stockQty, reservedQty, Math.floor(stockQty * 0.2),
       ]);
       realProductIds.push(p.id);
+      productMeta[p.id] = { name: orchid.name, catName: catMap[catName] || 'Other Orchids' };
     }
 
     // 6b. Faker-generated products (490)
@@ -410,6 +459,7 @@ async function seed() {
         basePrice, moq, stockQty, reservedQty, Math.max(1, Math.floor(stockQty * 0.1)), status,
       ]);
       allProductIds.push(p.id);
+      productMeta[p.id] = { name: productName, catName };
     }
     console.log(`   → ${allProductIds.length} products (${realProductIds.length} real orchids + ${allProductIds.length - realProductIds.length} generated)`);
 
@@ -443,21 +493,24 @@ async function seed() {
     }
     console.log(`   → ~${bulkCount} bulk price tiers`);
 
-    // ---- 8. Product images for real orchids ----
-    console.log('🖼️  Seeding product images for real orchids…');
-    for (const pid of realProductIds) {
-      const imgId = String(pid).padStart(4, '0');
+    // ---- 8. Product images for ALL products ----
+    // Uses local catalogue photos in apps/web/public/images/catalogue/ instead of
+    // the old Cloudinary bucket (those URLs 404 — nothing was ever uploaded there).
+    console.log('🖼️  Seeding product images…');
+    let imageCount = 0;
+    let imageSkipped = 0;
+    for (const pid of allProductIds) {
+      const meta = productMeta[pid];
+      const url = catalogueImageUrl(pid, meta.name, meta.catName);
+      if (!url) { imageSkipped++; continue; }
       await pool.query(`
         INSERT INTO product_images (product_id, cloudinary_public_id, url, is_primary, sort_order)
-        VALUES ($1, $2, $3, true, 0)
+        VALUES ($1, NULL, $2, true, 0)
         ON CONFLICT DO NOTHING
-      `, [
-        pid,
-        `orchids/products/orc-${imgId}`,
-        `https://res.cloudinary.com/orchids/image/upload/v1/products/orc-${imgId}.jpg`,
-      ]);
+      `, [pid, url]);
+      imageCount++;
     }
-    console.log(`   → ${realProductIds.length} placeholder images`);
+    console.log(`   → ${imageCount} product images (${imageSkipped} skipped — no category mapping)`);
 
     // ---- 9. Trade buyers ----
     console.log('🏢 Seeding trade buyers…');
