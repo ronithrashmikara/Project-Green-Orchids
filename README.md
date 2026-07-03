@@ -85,7 +85,7 @@ Five distinct role-based portals, each with its own dark glassmorphism theme:
 ![Inventory Dashboard](docs/media/screenshots/inventory-dashboard.png)
 
 ### Delivery Centre — Coordinator Dashboard
-Dispatch queue, in-transit tracking and proof-of-delivery upload for the Delivery Coordinator role — see `apps/web/app/(delivery)/`.
+![Delivery Dashboard](docs/media/screenshots/delivery-dashboard.png)
 
 ---
 
