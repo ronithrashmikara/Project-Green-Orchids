@@ -28,3 +28,4 @@ docs/image-assets/catalogue-products.csv
 scripts/dev-tools/
 # session scratch space (rendering sources, temp API/DB test artefacts)
 tmp/
+docs-panel-core/
