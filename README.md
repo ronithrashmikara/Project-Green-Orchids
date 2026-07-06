@@ -22,57 +22,62 @@ A full-stack B2B wholesale commerce platform for a Sri Lankan orchid exporter �
 
 ## Status
 
-All 6 roles (Admin, Trade Buyer, Finance Officer, Inventory Manager, Delivery
-Coordinator, and public visitor) have a working, populated portal, and all 7
-core golden paths pass end-to-end with UI + API + DB verification: buyer
-onboarding (register → email OTP verify → admin approval), catalogue → cart →
-order → admin approve → stock reservation → invoice, RFQ → quote → accept →
-convert to order, invoicing with partial/final payments to exactly PAID,
-delivery assign → dispatch → in-transit → POD → buyer confirmation, RMA
-return → approve → item received (real stock movement) → resolution with an
-invoice credit that actually updates the invoice's balance, and a security/
-audit panel (login history, session force-logout, a locked-account panel that
-reflects the real lockout mechanism, audit log) with admin-decided price
-governance and CMS media.
+**All 6 roles have a working, populated portal** — Admin, Trade Buyer, Finance
+Officer, Inventory Manager, Delivery Coordinator, and public visitor — and all
+7 core golden paths pass end-to-end with UI + API + DB verification:
 
-Two full strict QA passes have been run against this codebase; every bug
-either pass found — 15 total — has been fixed and re-verified live (not from
-code review alone):
-- [`docs/qa-reports/QA_FULL_SYSTEM_TEST_REPORT_2026-07-04.md`](docs/qa-reports/QA_FULL_SYSTEM_TEST_REPORT_2026-07-04.md) — the first strict pass (5 bugs, fixed same day)
-- [`docs/qa-reports/QA_FIX_VERIFICATION_2026-07-03.md`](docs/qa-reports/QA_FIX_VERIFICATION_2026-07-03.md) — the second strict pass (10 bugs, including the missing Delivery Coordinator portal, an RMA credit note that never updated its invoice, an admin lockout panel disconnected from the real lockout check, and a payment-reversal two-person rule that accepted a fabricated approver)
+- Buyer onboarding: register → email OTP verify → admin approval
+- Catalogue → cart → order → admin approve → stock reservation → invoice
+- RFQ → quote → accept → convert to order
+- Invoicing with partial/final payments landing exactly on PAID
+- Delivery: assign → dispatch → in-transit → POD → buyer confirmation
+- RMA: return → approve → item received (real stock movement) → resolution with an invoice credit that actually updates the balance
+- Security/audit panel: login history, session force-logout, a locked-account panel wired to the real lockout mechanism, audit log — plus admin-decided price governance and CMS media
 
-On top of that, a real automated test suite now backs the API: 61 `node:test`
-integration tests (`npm test`) driving the actual Express app against an
-isolated database, covering every module and re-asserting all 15 bugs above so
-they can't silently regress. Writing those tests surfaced 8 more real bugs —
-role_id validated as a UUID when the real column is a smallint (staff-user
-creation was completely broken), two wrong SQL column names, a NULL-overrides-
-DEFAULT bug on supplier creation, an entirely broken CMS content-block module
-(wrong columns) plus a public content leak of unpublished drafts, a cart
-stock-check gap on brand-new lines, a seed-script FK-order gap, and a JWT
-timing race in password-change token invalidation — all fixed and now
-regression-tested. A later concurrency pass reproduced (with 10-way concurrent
-requests) and fixed real double-processing races on order approval, RFQ-to-
-order conversion, and RMA approve/receive, each now serialized with a
-`SELECT ... FOR UPDATE` row lock inside its transaction; all four now have a
+### QA history
+
+Two full strict QA passes have been run against this codebase, and every bug
+either one found — 15 total — has been fixed and re-verified live, not just
+from code review:
+
+- [`QA_FULL_SYSTEM_TEST_REPORT_2026-07-04.md`](docs/qa-reports/QA_FULL_SYSTEM_TEST_REPORT_2026-07-04.md) — first strict pass (5 bugs, fixed same day)
+- [`QA_FIX_VERIFICATION_2026-07-03.md`](docs/qa-reports/QA_FIX_VERIFICATION_2026-07-03.md) — second strict pass (10 bugs, including the missing Delivery Coordinator portal, an RMA credit note that never touched its invoice, a locked-accounts panel disconnected from the real lockout mechanism, and a payment-reversal rule that accepted a fabricated approver)
+
+On top of that, **61 `node:test` integration tests** (`npm test`) now drive the
+real Express app against an isolated database, covering every module and
+re-asserting all 15 bugs above so they can't silently regress.
+
+Writing those tests surfaced **8 more real bugs**: `role_id` validated as a
+UUID when the real column is a smallint (staff-user creation was completely
+broken), two wrong SQL column names, a NULL-overrides-DEFAULT bug on supplier
+creation, an entirely broken CMS content-block module (wrong columns) plus a
+public leak of unpublished drafts, a cart stock-check gap on brand-new lines,
+a seed-script FK-order gap, and a JWT timing race in password-change token
+invalidation. All fixed, all regression-tested.
+
+A later concurrency pass went looking for race conditions directly: firing
+10-way concurrent requests at order approval, RFQ-to-order conversion, and
+RMA approve/receive. All three raced — double-reserved stock, duplicate
+orders, duplicate credits. All three are now serialized with a
+`SELECT ... FOR UPDATE` row lock inside their transaction, each with its own
 dedicated regression test.
 
-This is not a claim that every bug has been found — it's 61/61 tests green
+**This isn't a claim that every bug has been found.** It's 61/61 tests green
 today, with the specific things those tests check enumerated above and in
-`docs/qa-reports/`.
+[`docs/qa-reports/`](docs/qa-reports/).
 
 CI (GitHub Actions, badge above) runs on every push/PR to `main`/`develop`:
 spins up a real Postgres service container, syntax-checks the API, builds the
-web app, and runs the full test suite. Its first real run caught one more bug
-no local check had: the web app shipped a `tsconfig.json` for its `@/*` import
-alias despite being 100% JavaScript with no `typescript` dependency — it
-resolved by local accident but failed outright on a clean checkout. Fixed with
-the correct `jsconfig.json`.
+web app, and runs the full test suite. Its first real run caught a bug no
+local check had — the web app shipped a `tsconfig.json` for its `@/*` import
+alias despite being 100% JavaScript with no `typescript` dependency, which
+happened to resolve locally by accident but failed outright on a clean
+checkout. Fixed with the correct `jsconfig.json`.
 
 **Known gaps, honestly:**
 - Zero automated coverage of the frontend itself — the test suite is API/DB-only; UI regressions still need manual browser QA.
 - Reports/BI, notification retry, credit monitor, and CMS content blocks are smoke-tested, not exhaustively.
-- `scripts/seed.js`/`scripts/migrate.js` are idempotent, but the seeded demo dataset still accumulates whatever a session runs against it — reset with a fresh `npm run migrate && npm run seed` for a clean slate.
+- `scripts/seed.js` / `scripts/migrate.js` are idempotent, but the seeded demo dataset accumulates whatever a session runs against it — reset with a fresh `npm run migrate && npm run seed` for a clean slate.
 
 ## Public Homepage
 
