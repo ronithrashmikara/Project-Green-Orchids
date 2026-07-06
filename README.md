@@ -165,8 +165,8 @@ Six distinct role-based portals, each with its own dark glassmorphism theme:
 
 ### Prerequisites
 
-- Node.js 18+
-- PostgreSQL 14+ running locally
+- Node.js **18+** (pinned via `"engines"` in `package.json`; CI itself runs on Node 22)
+- PostgreSQL **14+** (CI runs against `postgres:16`; developed against 18 locally — any 14+ works, the schema uses no version-specific features)
 - (Optional) pnpm / npm
 
 ### 1. Install dependencies
