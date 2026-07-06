@@ -77,3 +77,38 @@ test('a bad/nonexistent order id returns a clean 404, not a crash', async () => 
   assert.equal(status, 404);
   assert.equal(data.error.code, 'NOT_FOUND');
 });
+
+test('regression (FINDING-S01): concurrent approve calls on the same order do not double-reserve stock or create duplicate invoices', async () => {
+  const add = await req(ctx.baseUrl, 'POST', '/cart/items', {
+    token: buyerToken, body: { product_id: product.id, quantity: product.moq },
+  });
+  assert.equal(add.status, 201);
+  const created = await req(ctx.baseUrl, 'POST', '/orders', { token: buyerToken, body: {} });
+  const raceOrder = created.data.data;
+  assert.equal(raceOrder.status, 'PENDING_APPROVAL');
+
+  const beforeReserve = await req(ctx.baseUrl, 'GET', `/products/${product.id}`, { token: buyerToken });
+  const reservedBefore = beforeReserve.data.data.reserved;
+
+  // Fire the same approve() twice concurrently. Before the row lock was added, the order
+  // row's status was only read once before the transaction started, so both requests could
+  // pass the PENDING_APPROVAL check, both reserve stock, and both create an invoice — only an
+  // unrelated invoices.order_id UNIQUE constraint accidentally caught the second one with a
+  // raw unhandled 500 instead of a clean conflict response.
+  const [r1, r2] = await Promise.all([
+    req(ctx.baseUrl, 'PATCH', `/orders/${raceOrder.id}/approve`, { token: adminToken, body: {} }),
+    req(ctx.baseUrl, 'PATCH', `/orders/${raceOrder.id}/approve`, { token: adminToken, body: {} }),
+  ]);
+  const statuses = [r1.status, r2.status].sort();
+  assert.deepEqual(statuses, [200, 409], 'exactly one approve should succeed, the other should get a clean 409');
+  const loser = r1.status === 409 ? r1 : r2;
+  assert.equal(loser.data.error.code, 'INVALID_TRANSITION');
+
+  const afterReserve = await req(ctx.baseUrl, 'GET', `/products/${product.id}`, { token: buyerToken });
+  assert.equal(afterReserve.data.data.reserved, reservedBefore + product.moq,
+    'reserved should increase by exactly one order worth of stock, not double');
+
+  const invoices = await req(ctx.baseUrl, 'GET', `/invoices?order_id=${raceOrder.id}`, { token: buyerToken });
+  const matching = (invoices.data.data || []).filter((i) => i.order_id === raceOrder.id);
+  assert.equal(matching.length, 1, 'exactly one invoice should be created, not two');
+});

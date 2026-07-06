@@ -80,11 +80,20 @@ const repo = {
   async updateStatus(client, id, status) {
     await (client ? client.query.bind(client) : query)('UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2', [status, id]);
   },
+  // Locks the order row for the duration of the transaction so two concurrent
+  // approve/convert/etc. requests on the same order serialize instead of both
+  // reading the same pre-transition status (FINDING-S01).
+  async lockForUpdate(client, id) {
+    const r = await client.query('SELECT * FROM orders WHERE id = $1 FOR UPDATE', [id]);
+    return r.rows[0] || null;
+  },
   async setApproved(client, id, actor) {
-    await (client ? client.query.bind(client) : query)(
-      `UPDATE orders SET status = 'APPROVED', approved_by = $1, approved_at = NOW(), updated_at = NOW() WHERE id = $2`,
+    const r = await client.query(
+      `UPDATE orders SET status = 'APPROVED', approved_by = $1, approved_at = NOW(), updated_at = NOW()
+       WHERE id = $2 AND status = 'PENDING_APPROVAL' RETURNING *`,
       [actor, id]
     );
+    return r.rows[0] || null;
   },
   async setRejected(client, id, reason) {
     await (client ? client.query.bind(client) : query)(

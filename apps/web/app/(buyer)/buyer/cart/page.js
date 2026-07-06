@@ -11,6 +11,7 @@ import { CreditBar } from '@/components/domain/StatusBadge';
 import { EmptyState } from '@/components/ui/Spinner';
 import { formatLKR } from '@/lib/utils';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { PageHeader } from '@/components/domain/DashboardUI';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -23,6 +24,16 @@ export default function CartPage() {
   const [checkoutForm, setCheckoutForm] = useState({ poReference: '', note: '' });
   const [placing, setPlacing] = useState(false);
   const [creditInfo, setCreditInfo] = useState(null);
+  const [removeTarget, setRemoveTarget] = useState(null);
+
+  const confirmRemove = (productId) => {
+    const item = items.find((i) => i.productId === productId);
+    setRemoveTarget(item || { productId });
+  };
+  const handleConfirmRemove = () => {
+    if (removeTarget) removeItem(removeTarget.productId);
+    setRemoveTarget(null);
+  };
 
   // Compute savings
   const baseTotal = items.reduce((sum, i) => sum + (i.price || 0) * i.quantity, 0);
@@ -83,7 +94,7 @@ export default function CartPage() {
             item={item}
             tier={user?.tier}
             onUpdateQty={updateQuantity}
-            onRemove={removeItem}
+            onRemove={confirmRemove}
           />
         ))}
       </div>
@@ -112,6 +123,16 @@ export default function CartPage() {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={!!removeTarget}
+        onClose={() => setRemoveTarget(null)}
+        onConfirm={handleConfirmRemove}
+        title="Remove item from cart?"
+        message={removeTarget ? `Remove "${removeTarget.name || 'this item'}" from your cart?` : ''}
+        confirmLabel="Remove"
+        variant="warning"
+      />
     </div>
   );
 }

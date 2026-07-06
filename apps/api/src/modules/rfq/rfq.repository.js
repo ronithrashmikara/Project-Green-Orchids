@@ -62,6 +62,23 @@ const repo = {
   async updateStatus(client, id, status) {
     await (client ? client.query.bind(client) : query)(`UPDATE rfqs SET status = $1, updated_at = NOW() WHERE id = $2`, [status, id]);
   },
+  // Locks the RFQ row for the duration of the transaction so two concurrent
+  // conversion requests on the same accepted RFQ serialize instead of both
+  // creating an order from it (FINDING-S01).
+  async lockForUpdate(client, id) {
+    const r = await client.query('SELECT * FROM rfqs WHERE id = $1 FOR UPDATE', [id]);
+    return r.rows[0] || null;
+  },
+  // Conditional status transition — only flips to CONVERTED if still ACCEPTED,
+  // so a second concurrent caller gets 0 rows updated instead of silently
+  // clobbering the first conversion's status write.
+  async markConverted(client, id) {
+    const r = await client.query(
+      `UPDATE rfqs SET status = 'CONVERTED', updated_at = NOW() WHERE id = $1 AND status = 'ACCEPTED' RETURNING *`,
+      [id],
+    );
+    return r.rows[0] || null;
+  },
   async updateItemQuote(client, { itemId, quotedPrice }) {
     await (client ? client.query.bind(client) : query)('UPDATE rfq_items SET quoted_unit_price = $1 WHERE id = $2', [quotedPrice, itemId]);
   },

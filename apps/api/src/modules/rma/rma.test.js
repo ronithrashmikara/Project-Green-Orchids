@@ -80,3 +80,47 @@ test('golden path: RMA create -> admin approve -> inventory receives (restock) -
   assert.equal(balanceAfter, Math.round((balanceBefore - creditAmount) * 100) / 100,
     'balance_due must actually drop by the credit amount instead of staying frozen at PAID/0');
 });
+
+test('regression (FINDING-S01): concurrent RMA approve only processes once', async () => {
+  const created = await req(ctx.baseUrl, 'POST', '/rma', {
+    token: buyerToken,
+    body: { order_id: order.id, order_item_id: orderItem.id, quantity: 1, reason: 'automated test: concurrency check on approve', return_type: 'DAMAGED' },
+  });
+  const rma = created.data.data;
+
+  // Before locking the RMA row inside the transaction, this raced: with enough concurrent
+  // requests (10-way), 3-4 "successful" approvals landed on the same PENDING RMA, each
+  // overwriting decided_by/decided_at and firing a duplicate approval email.
+  const results = await Promise.all(
+    Array.from({ length: 10 }, () => req(ctx.baseUrl, 'PATCH', `/rma/${rma.id}/approve`, { token: adminToken, body: {} }))
+  );
+  const successes = results.filter((r) => r.status === 200);
+  assert.equal(successes.length, 1, 'exactly one approve should succeed out of 10 concurrent attempts');
+  const failures = results.filter((r) => r.status !== 200);
+  for (const f of failures) assert.equal(f.status, 409);
+});
+
+test('regression (FINDING-S01): concurrent RMA receive only credits stock once', async () => {
+  const returnQty = 2;
+  const created = await req(ctx.baseUrl, 'POST', '/rma', {
+    token: buyerToken,
+    body: { order_id: order.id, order_item_id: orderItem.id, quantity: returnQty, reason: 'automated test: concurrency check on receive', return_type: 'DAMAGED' },
+  });
+  const rma = created.data.data;
+  await req(ctx.baseUrl, 'PATCH', `/rma/${rma.id}/approve`, { token: adminToken, body: {} });
+
+  const stockBefore = await req(ctx.baseUrl, 'GET', `/products/${orderItem.product_id}`, { token: adminToken });
+  const stockQtyBefore = stockBefore.data.data.stock;
+
+  // Before locking the RMA row inside the transaction, this raced: with enough concurrent
+  // requests (10-way), 4 "successful" receives landed on the same APPROVED RMA, quadrupling
+  // the stock credit (8 units instead of 2) for a single physical return.
+  const results = await Promise.all(
+    Array.from({ length: 10 }, () => req(ctx.baseUrl, 'PATCH', `/rma/${rma.id}/receive`, { token: inventoryToken, body: { disposition: 'RESTOCK' } }))
+  );
+  const successes = results.filter((r) => r.status === 200);
+  assert.equal(successes.length, 1, 'exactly one receive should succeed out of 10 concurrent attempts');
+
+  const stockAfter = await req(ctx.baseUrl, 'GET', `/products/${orderItem.product_id}`, { token: adminToken });
+  assert.equal(stockAfter.data.data.stock, stockQtyBefore + returnQty, 'stock should be credited exactly once, not once per concurrent request');
+});

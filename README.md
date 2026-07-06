@@ -41,7 +41,7 @@ code review alone):
 - [`docs/qa-reports/QA_FULL_SYSTEM_TEST_REPORT_2026-07-04.md`](docs/qa-reports/QA_FULL_SYSTEM_TEST_REPORT_2026-07-04.md) — the first strict pass (5 bugs, fixed same day)
 - [`docs/qa-reports/QA_FIX_VERIFICATION_2026-07-03.md`](docs/qa-reports/QA_FIX_VERIFICATION_2026-07-03.md) — the second strict pass (10 bugs, including the missing Delivery Coordinator portal, an RMA credit note that never updated its invoice, an admin lockout panel disconnected from the real lockout check, and a payment-reversal two-person rule that accepted a fabricated approver)
 
-On top of that, a real automated test suite now backs the API: 57 `node:test`
+On top of that, a real automated test suite now backs the API: 61 `node:test`
 integration tests (`npm test`) driving the actual Express app against an
 isolated database, covering every module and re-asserting all 15 bugs above so
 they can't silently regress. Writing those tests surfaced 8 more real bugs —
@@ -51,7 +51,15 @@ DEFAULT bug on supplier creation, an entirely broken CMS content-block module
 (wrong columns) plus a public content leak of unpublished drafts, a cart
 stock-check gap on brand-new lines, a seed-script FK-order gap, and a JWT
 timing race in password-change token invalidation — all fixed and now
-regression-tested.
+regression-tested. A later concurrency pass reproduced (with 10-way concurrent
+requests) and fixed real double-processing races on order approval, RFQ-to-
+order conversion, and RMA approve/receive, each now serialized with a
+`SELECT ... FOR UPDATE` row lock inside its transaction; all four now have a
+dedicated regression test.
+
+This is not a claim that every bug has been found — it's 61/61 tests green
+today, with the specific things those tests check enumerated above and in
+`docs/qa-reports/`.
 
 CI (GitHub Actions, badge above) runs on every push/PR to `main`/`develop`:
 spins up a real Postgres service container, syntax-checks the API, builds the
@@ -102,7 +110,7 @@ the same mapping to an already-seeded database without a destructive reseed.
 
 ## Dashboards
 
-Five distinct role-based portals, each with its own dark glassmorphism theme:
+Six distinct role-based portals, each with its own dark glassmorphism theme:
 
 ### Admin Suite — Operations Dashboard
 ![Admin Dashboard](docs/media/screenshots/admin-dashboard.png)
@@ -238,7 +246,7 @@ npm test
 
 Runs `scripts/run-tests.js`, which migrates + seeds an isolated `..._test`
 database (derived from `DATABASE_URL`, never the real dev DB) and then runs
-the full `node:test` integration suite (57 tests) sequentially against a real
+the full `node:test` integration suite (61 tests) sequentially against a real
 instance of the app. No extra test framework to install. The same thing runs
 in CI on every push/PR — see the badge at the top of this file, or
 `.github/workflows/ci.yml`.

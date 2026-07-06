@@ -67,7 +67,14 @@ const service = {
     if (!r) throw new AppError('NOT_FOUND', 'RMA not found', 404);
     assertTransition('RMA', r.status, 'APPROVED', role);
     await tx(async (client) => {
-      await repo.updateStatus(client, id, 'APPROVED');
+      // Lock + conditionally transition so concurrent approve calls on the same RMA
+      // serialize instead of both passing the pre-transaction status check and both
+      // writing decided_by/decided_at + firing a duplicate approval email (FINDING-S01;
+      // reproduced with 10-way concurrent requests giving 4 "successful" approvals).
+      const locked = await repo.lockForUpdate(client, id);
+      if (locked) assertTransition('RMA', locked.status, 'APPROVED', role);
+      const updated = locked && await repo.transitionStatus(client, id, locked.status, 'APPROVED');
+      if (!updated) throw new AppError('INVALID_TRANSITION', 'RMA was already processed by another request', 409);
       await client.query(`UPDATE rma_requests SET decided_by = $1, decided_at = NOW() WHERE id = $2`, [actor, id]);
       await writeAudit({ actor, action: 'RMA_APPROVED', entity: 'rma_requests', entityId: String(id) }, client);
     });
@@ -79,7 +86,10 @@ const service = {
     if (!r) throw new AppError('NOT_FOUND', 'RMA not found', 404);
     assertTransition('RMA', r.status, 'REJECTED', role);
     await tx(async (client) => {
-      await repo.updateStatus(client, id, 'REJECTED');
+      const locked = await repo.lockForUpdate(client, id);
+      if (locked) assertTransition('RMA', locked.status, 'REJECTED', role);
+      const updated = locked && await repo.transitionStatus(client, id, locked.status, 'REJECTED');
+      if (!updated) throw new AppError('INVALID_TRANSITION', 'RMA was already processed by another request', 409);
       await client.query(`UPDATE rma_requests SET decided_by = $1, decided_at = NOW(), resolution = $2 WHERE id = $3`, [actor, data.reason, id]);
       await writeAudit({ actor, action: 'RMA_REJECTED', entity: 'rma_requests', entityId: String(id), after: { reason: data.reason } }, client);
     });
@@ -92,7 +102,15 @@ const service = {
     assertTransition('RMA', r.status, 'ITEM_RECEIVED', role);
 
     await tx(async (client) => {
-      await repo.updateStatus(client, id, 'ITEM_RECEIVED');
+      // Lock + conditionally transition (FINDING-S01) — reproduced with 10-way concurrent
+      // receive calls crediting stock 4x (8 units instead of 2) before this fix. Re-running
+      // assertTransition against the post-lock status (not the pre-tx read) is what makes a
+      // second concurrent caller see the now-current status and fail cleanly instead of the
+      // transitionStatus guard trivially matching itself (e.g. ITEM_RECEIVED -> ITEM_RECEIVED).
+      const locked = await repo.lockForUpdate(client, id);
+      if (locked) assertTransition('RMA', locked.status, 'ITEM_RECEIVED', role);
+      const updated = locked && await repo.transitionStatus(client, id, locked.status, 'ITEM_RECEIVED');
+      if (!updated) throw new AppError('INVALID_TRANSITION', 'RMA was already processed by another request', 409);
       await client.query(`UPDATE rma_requests SET inventory_adjustment_note = $1 WHERE id = $2`, [data.notes || data.disposition, id]);
 
       const movType = data.disposition === 'WRITE_OFF' ? 'DAMAGE_WRITE_OFF' : 'RMA_RETURN';
@@ -120,7 +138,12 @@ const service = {
     assertTransition('RMA', r.status, 'RESOLVED', role);
 
     await tx(async (client) => {
-      await repo.updateStatus(client, id, 'RESOLVED');
+      // Lock + conditionally transition (FINDING-S01) — without this, concurrent resolve
+      // calls could double-insert an invoice_adjustments credit note for the same RMA.
+      const locked = await repo.lockForUpdate(client, id);
+      if (locked) assertTransition('RMA', locked.status, 'RESOLVED', role);
+      const updated = locked && await repo.transitionStatus(client, id, locked.status, 'RESOLVED');
+      if (!updated) throw new AppError('INVALID_TRANSITION', 'RMA was already processed by another request', 409);
       await client.query(`UPDATE rma_requests SET resolution = $1 WHERE id = $2`, [data.resolution, id]);
 
       if (data.adjustment_amount > 0) {

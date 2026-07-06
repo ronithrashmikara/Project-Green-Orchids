@@ -71,3 +71,26 @@ test('cannot skip straight from SUBMITTED to QUOTED without going through UNDER_
   assert.equal(status, 409);
   assert.equal(data.error.code, 'INVALID_TRANSITION');
 });
+
+test('regression (FINDING-S01): concurrent RFQ-to-order conversion only creates one order', async () => {
+  const rfqId = await acceptedRfq();
+
+  // Before locking the RFQ row inside the transaction, this was a real race: with enough
+  // concurrent requests (10-way), 3-6 duplicate orders were created from a single accepted
+  // RFQ because every request re-read status='ACCEPTED' before any of them had committed
+  // their CONVERTED status write.
+  const results = await Promise.all(
+    Array.from({ length: 10 }, () => req(ctx.baseUrl, 'POST', '/orders/from-rfq', { token: buyerToken, body: { rfq_id: rfqId } }))
+  );
+  const successes = results.filter((r) => r.status === 201);
+  assert.equal(successes.length, 1, 'exactly one conversion should succeed out of 10 concurrent attempts');
+  const failures = results.filter((r) => r.status !== 201);
+  for (const f of failures) {
+    assert.equal(f.status, 409);
+    assert.equal(f.data.error.code, 'INVALID_STATE');
+  }
+
+  const orders = await req(ctx.baseUrl, 'GET', '/orders?limit=100', { token: adminToken });
+  const matching = (orders.data.data || []).filter((o) => o.rfq_id === rfqId);
+  assert.equal(matching.length, 1, 'exactly one order should exist for this RFQ');
+});

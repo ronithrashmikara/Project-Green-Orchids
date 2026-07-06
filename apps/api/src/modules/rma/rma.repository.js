@@ -57,6 +57,23 @@ const repo = {
   async updateStatus(client, id, status) {
     await (client ? client.query.bind(client) : query)(`UPDATE rma_requests SET status=$1, updated_at=NOW() WHERE id=$2`, [status, id]);
   },
+  // Locks the RMA row for the duration of the transaction so two concurrent
+  // approve/receive/resolve calls on the same RMA serialize instead of both
+  // proceeding past the pre-transaction status check (FINDING-S01).
+  async lockForUpdate(client, id) {
+    const r = await client.query('SELECT * FROM rma_requests WHERE id = $1 FOR UPDATE', [id]);
+    return r.rows[0] || null;
+  },
+  // Conditional status transition — only flips status if still in `fromStatus`,
+  // so a second concurrent caller gets 0 rows updated instead of double-applying
+  // the transition's side effects (stock credit, invoice credit, decision fields).
+  async transitionStatus(client, id, fromStatus, toStatus) {
+    const r = await client.query(
+      `UPDATE rma_requests SET status = $1, updated_at = NOW() WHERE id = $2 AND status = $3 RETURNING *`,
+      [toStatus, id, fromStatus],
+    );
+    return r.rows[0] || null;
+  },
   async update(client, id, data) {
     const keys = Object.keys(data); if (!keys.length) return;
     const sets = keys.map((k, i) => `${k}=$${i + 2}`); const vals = keys.map(k => data[k]);

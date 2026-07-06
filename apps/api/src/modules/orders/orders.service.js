@@ -89,6 +89,15 @@ const service = {
     const warnings = [];
     let order;
     await tx(async (client) => {
+      // Lock the RFQ row and re-check its status under the lock so two concurrent
+      // conversion requests on the same RFQ serialize instead of both creating an
+      // order from it (FINDING-S01) — reproduced with 10-way concurrent requests
+      // creating 3-6 duplicate orders from a single RFQ before this fix.
+      const locked = await rfqRepo.lockForUpdate(client, rfqId);
+      if (!locked || locked.status !== 'ACCEPTED') {
+        throw new AppError('INVALID_STATE', 'RFQ must be accepted', 409);
+      }
+
       order = await repo.create(client, {
         order_no: orderNumber, buyer_id: accountId, source: 'RFQ_CONVERSION', rfq_id: rfqId,
         subtotal, tier_discount_amount: 0, total,
@@ -99,7 +108,10 @@ const service = {
           unit_price: item.unit_price, price_source: 'RFQ_QUOTE', line_total: item.line_total,
         });
       }
-      await rfqRepo.updateStatus(client, rfqId, 'CONVERTED');
+      const converted = await rfqRepo.markConverted(client, rfqId);
+      if (!converted) {
+        throw new AppError('INVALID_STATE', 'RFQ was already converted by another request', 409);
+      }
     });
 
     // Compute availability warnings after creation (read-only)
@@ -142,10 +154,21 @@ const service = {
     const items = await repo.findItems(id);
 
     await tx(async (client) => {
+      // Lock the order row first so two concurrent approve() calls on the same order
+      // serialize here instead of both proceeding to reserve stock / create an invoice
+      // (FINDING-S01). Without this, the pre-transaction status read above is stale by
+      // the time either transaction's writes land, and both branches used to succeed —
+      // only an unrelated invoices.order_id UNIQUE constraint accidentally caught the
+      // second one, with a raw unhandled 500 instead of a clean conflict response.
+      const locked = await repo.lockForUpdate(client, id);
+      if (!locked || locked.status !== 'PENDING_APPROVAL') {
+        throw new AppError('INVALID_TRANSITION', `Cannot transition ORDER from ${locked ? locked.status : 'UNKNOWN'} to APPROVED`, 409);
+      }
+
       const productIds = items.map(i => i.product_id);
-      const locked = await repo.lockProductsForUpdate(client, productIds);
+      const lockedProducts = await repo.lockProductsForUpdate(client, productIds);
       const map = {};
-      for (const p of locked) map[p.id] = p;
+      for (const p of lockedProducts) map[p.id] = p;
 
       // Re-verify availability = stock_qty - reserved_qty (Finding 7)
       for (const item of items) {
@@ -177,7 +200,10 @@ const service = {
         total_amount: order.total, due_date: dueDate,
       });
 
-      await repo.setApproved(client, id, actor);
+      const approved = await repo.setApproved(client, id, actor);
+      if (!approved) {
+        throw new AppError('INVALID_TRANSITION', 'Order was already processed by another request', 409);
+      }
       await client.query(
         `INSERT INTO deliveries (order_id) VALUES ($1) ON CONFLICT (order_id) DO NOTHING`,
         [id],
