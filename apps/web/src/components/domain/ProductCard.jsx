@@ -1,16 +1,23 @@
 'use client';
 
+import { useState } from 'react';
 import { cn, formatLKR } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { StockBand, PriceBlock, TierBadge, StatusBadge } from './StatusBadge';
 
 export function ProductCard({ product, onAddToCart, onView, showPrices = false, tier, className }) {
   const outOfStock = product.stock != null && product.stock <= 0;
+  const [imgFailed, setImgFailed] = useState(false);
   return (
     <div className={cn('group overflow-hidden rounded-3xl border border-white/70 bg-white/82 shadow-xl shadow-green-950/5 ring-1 ring-slate-900/5 backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-green-950/10', className)}>
       <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-green-50 via-white to-pink-50">
-        {product.imageUrl ? (
-          <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+        {product.imageUrl && !imgFailed ? (
+          <img
+            src={product.imageUrl}
+            alt={product.name}
+            onError={() => setImgFailed(true)}
+            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+          />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-6xl text-green-700/35">🌿</div>
         )}
@@ -43,10 +50,15 @@ export function ProductCard({ product, onAddToCart, onView, showPrices = false, 
 }
 
 export function CartItem({ item, onUpdateQty, onRemove, tier }) {
+  const [imgFailed, setImgFailed] = useState(false);
   return (
     <div className="flex items-center gap-4 border-b border-slate-100 py-4 last:border-b-0">
       <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-green-50 to-pink-50 shadow-inner">
-        {item.imageUrl ? <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-2xl">🌿</div>}
+        {item.imageUrl && !imgFailed ? (
+          <img src={item.imageUrl} alt={item.name} onError={() => setImgFailed(true)} className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-2xl">🌿</div>
+        )}
       </div>
       <div className="min-w-0 flex-1">
         <h4 className="truncate text-sm font-black text-slate-900">{item.name}</h4>
@@ -80,7 +92,7 @@ export function ProductTable({ products = [], onSelect, selectedIds = [], classN
         <tbody className="divide-y divide-slate-100">
           {products.map((p) => (
             <tr key={p.id} className="cursor-pointer transition hover:bg-green-50/60" onClick={() => onSelect?.(p)}>
-              <td className="px-4 py-3"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center overflow-hidden rounded-xl bg-green-50">{p.imageUrl ? <img src={p.imageUrl} alt={p.name} className="h-10 w-10 object-cover" /> : '🌿'}</div><span className="font-black text-slate-900">{p.name}</span></div></td>
+              <td className="px-4 py-3 max-w-[16rem]"><div className="flex items-center gap-3"><div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl bg-green-50 text-base">{p.imageUrl ? <img src={p.imageUrl} alt={p.name} className="h-10 w-10 object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'block'; }} /> : null}<span style={p.imageUrl ? { display: 'none' } : undefined}>🌿</span></div><span className="truncate font-black text-slate-900">{p.name}</span></div></td>
               <td className="px-4 py-3 text-slate-500">{p.sku}</td><td className="px-4 py-3 text-slate-500">{p.category}</td><td className="px-4 py-3 text-right font-semibold text-slate-900">{formatLKR(p.price)}</td><td className="px-4 py-3 text-right">{p.stock || 0}</td><td className="px-4 py-3 text-center"><StockBand stock={p.stock} /></td>
             </tr>
           ))}
@@ -96,7 +108,7 @@ export function OrderTable({ orders = [], onView, className }) {
       <table className="min-w-full divide-y divide-slate-100 text-sm">
         <thead className="bg-gradient-to-r from-slate-50 to-green-50/70"><tr>{['Order #', 'Date', 'Buyer', 'Total', 'Status'].map((h, i) => <th key={h} className={cn('px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-slate-500', i === 3 ? 'text-right' : i === 4 ? 'text-center' : 'text-left')}>{h}</th>)}</tr></thead>
         <tbody className="divide-y divide-slate-100">
-          {orders.map((o) => <tr key={o.id} className="cursor-pointer transition hover:bg-green-50/60" onClick={() => onView?.(o)}><td className="px-4 py-3 font-black text-slate-900">{o.orderNo || o.id}</td><td className="px-4 py-3 text-slate-500">{o.date || o.createdAt}</td><td className="px-4 py-3 text-slate-500">{o.buyerName || o.buyerId}</td><td className="px-4 py-3 text-right font-semibold">{formatLKR(o.total)}</td><td className="px-4 py-3 text-center"><StatusBadge status={o.status} /></td></tr>)}
+          {orders.map((o) => <tr key={o.id} className="cursor-pointer transition hover:bg-green-50/60" onClick={() => onView?.(o)}><td className="px-4 py-3 font-black text-slate-900">{o.orderNo || o.id}</td><td className="px-4 py-3 text-slate-500">{o.date || o.createdAt}</td><td className="max-w-[14rem] truncate px-4 py-3 text-slate-500">{o.buyerName || o.buyerId}</td><td className="px-4 py-3 text-right font-semibold">{formatLKR(o.total)}</td><td className="px-4 py-3 text-center"><StatusBadge status={o.status} /></td></tr>)}
         </tbody>
       </table>
     </div>

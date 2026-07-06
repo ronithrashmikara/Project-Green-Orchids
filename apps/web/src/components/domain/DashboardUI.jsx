@@ -60,7 +60,7 @@ export function PageHeader({ eyebrow, title, description, actions, back, tone: t
     <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
       <div>
         {back && (
-          <Link href={back.href} className="mb-2 inline-flex items-center gap-1 text-[12px] font-semibold text-slate-400 hover:text-slate-600">
+          <Link href={back.href} className="mb-2 inline-flex items-center gap-1 text-[12px] font-semibold text-slate-500 hover:text-slate-600">
             ← {back.label || 'Back'}
           </Link>
         )}
@@ -90,7 +90,7 @@ export function MetricCard({ label, value, detail, icon, tone: t = 'emerald', hr
         <div className={cn('flex h-10 w-10 items-center justify-center rounded-xl text-lg text-white', c.icon)}>
           {icon}
         </div>
-        {detail && <span className="text-[11px] font-medium text-slate-400">{detail}</span>}
+        {detail && <span className="text-[11px] font-medium text-slate-500">{detail}</span>}
       </div>
       <div>
         <p className="text-2xl font-bold tabular-nums text-slate-900">{value}</p>
@@ -111,7 +111,7 @@ export function GlassPanel({ children, title, subtitle, action, className }) {
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <div>
             {title && <p className="text-[14px] font-semibold text-slate-800">{title}</p>}
-            {subtitle && <p className="mt-0.5 text-[12px] text-slate-400">{subtitle}</p>}
+            {subtitle && <p className="mt-0.5 text-[12px] text-slate-500">{subtitle}</p>}
           </div>
           {action && <div className="shrink-0">{action}</div>}
         </div>
@@ -136,7 +136,7 @@ export function ActionTile({ href, title, description, icon, tone: t = 'emerald'
       </div>
       <div className="min-w-0">
         <p className="text-[13px] font-semibold text-slate-800 group-hover:text-slate-900">{title}</p>
-        {description && <p className="mt-0.5 text-[12px] leading-snug text-slate-400">{description}</p>}
+        {description && <p className="mt-0.5 text-[12px] leading-snug text-slate-500">{description}</p>}
       </div>
     </Link>
   );

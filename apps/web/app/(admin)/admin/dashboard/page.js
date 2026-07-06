@@ -91,7 +91,7 @@ export default function AdminDashboardPage() {
           action={<Link href="/admin/orders" className="text-[12px] font-semibold text-emerald-600 hover:text-emerald-700">View all →</Link>}
         >
           {orders.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-400">No orders yet</p>
+            <p className="py-6 text-center text-sm text-slate-500">No orders yet</p>
           ) : (
             <div className="divide-y divide-slate-100">
               {orders.map((o) => (
@@ -104,7 +104,7 @@ export default function AdminDashboardPage() {
                     <p className="truncate text-[13px] font-semibold text-slate-800">
                       #{o.order_no || o.orderNumber || o.id}
                     </p>
-                    <p className="truncate text-[12px] text-slate-400">
+                    <p className="truncate text-[12px] text-slate-500">
                       {o.buyer_name || o.buyerName || '—'} · {formatDate(o.created_at || o.createdAt, 'dd MMM yyyy')}
                     </p>
                   </div>
@@ -124,7 +124,7 @@ export default function AdminDashboardPage() {
           action={<Link href="/admin/rfqs" className="text-[12px] font-semibold text-violet-600 hover:text-violet-700">View all →</Link>}
         >
           {rfqs.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-400">No RFQs yet</p>
+            <p className="py-6 text-center text-sm text-slate-500">No RFQs yet</p>
           ) : (
             <div className="divide-y divide-slate-100">
               {rfqs.map((r) => (
@@ -137,7 +137,7 @@ export default function AdminDashboardPage() {
                     <p className="truncate text-[13px] font-semibold text-slate-800">
                       {r.rfq_no || r.reference || `RFQ-${r.id}`}
                     </p>
-                    <p className="truncate text-[12px] text-slate-400">
+                    <p className="truncate text-[12px] text-slate-500">
                       {r.buyer_name || r.buyerName || '—'} · {formatDate(r.created_at || r.createdAt, 'dd MMM yyyy')}
                     </p>
                   </div>

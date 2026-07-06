@@ -21,7 +21,14 @@ export function Providers({ children }) {
       <AuthProvider>
         <CartProvider>
           {children}
-          <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 3500,
+              success: { duration: 3000 },
+              error: { duration: 6000 },
+            }}
+          />
         </CartProvider>
       </AuthProvider>
     </QueryClientProvider>

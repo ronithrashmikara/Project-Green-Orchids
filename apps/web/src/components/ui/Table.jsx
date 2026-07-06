@@ -53,7 +53,7 @@ export function Table({ columns = [], rows = [], onRowClick, isLoading, emptyMes
             </tr>
           ) : sortedRows.length === 0 ? (
             <tr>
-              <td colSpan={columns.length} className="px-4 py-12 text-center text-sm font-medium text-slate-400">{emptyMessage}</td>
+              <td colSpan={columns.length} className="px-4 py-12 text-center text-sm font-medium text-slate-500">{emptyMessage}</td>
             </tr>
           ) : (
             sortedRows.map((row, i) => (
@@ -63,7 +63,7 @@ export function Table({ columns = [], rows = [], onRowClick, isLoading, emptyMes
                 className={cn('transition-colors hover:bg-green-50/50', onRowClick && 'cursor-pointer')}
               >
                 {columns.map((col) => (
-                  <td key={col.key} className={cn('px-4 py-3.5 text-sm text-slate-700', col.className)}>
+                  <td key={col.key} className={cn('px-4 py-3.5 text-sm text-slate-700', !col.render && 'max-w-[20rem] truncate', col.className)}>
                     {col.render ? col.render(row[col.key], row) : row[col.key]}
                   </td>
                 ))}

@@ -21,7 +21,7 @@ async function dispatchOutbox() {
       try {
         await sendMail({
           to: item.recipient_email,
-          subject: `ORCHIDS: ${item.template}`,
+          subject: `Orchids: ${item.template}`,
           template: item.template,
           data: item.payload || {},
         });

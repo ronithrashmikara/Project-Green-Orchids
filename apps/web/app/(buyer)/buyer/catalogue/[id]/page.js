@@ -22,6 +22,7 @@ export default function ProductDetailPage() {
   const [error, setError] = useState(null);
   const [qty, setQty] = useState(1);
   const [activeImage, setActiveImage] = useState(0);
+  const [failedImages, setFailedImages] = useState(() => new Set());
 
   useEffect(() => {
     (async () => {
@@ -54,8 +55,13 @@ export default function ProductDetailPage() {
         {/* Images */}
         <div>
           <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden mb-4">
-            {images[activeImage] ? (
-              <img src={images[activeImage]} alt={product.name} className="w-full h-full object-cover" />
+            {images[activeImage] && !failedImages.has(images[activeImage]) ? (
+              <img
+                src={images[activeImage]}
+                alt={product.name}
+                className="w-full h-full object-cover"
+                onError={() => setFailedImages((s) => new Set(s).add(images[activeImage]))}
+              />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-6xl">🌿</div>
             )}
@@ -64,7 +70,14 @@ export default function ProductDetailPage() {
             <div className="flex gap-2">
               {images.map((img, i) => (
                 <button key={i} onClick={() => setActiveImage(i)} className={`w-16 h-16 rounded border-2 ${activeImage === i ? 'border-green-700' : 'border-gray-200'}`}>
-                  {img ? <img src={img} className="w-full h-full object-cover rounded" /> : <span>🌿</span>}
+                  {img && !failedImages.has(img) ? (
+                    <img
+                      src={img}
+                      alt={`${product.name} thumbnail ${i + 1}`}
+                      className="w-full h-full object-cover rounded"
+                      onError={() => setFailedImages((s) => new Set(s).add(img))}
+                    />
+                  ) : <span>🌿</span>}
                 </button>
               ))}
             </div>

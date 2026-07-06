@@ -20,11 +20,17 @@ function stockInfo(stock) {
 
 function ProductTile({ p }) {
   const s = stockInfo(p.stock);
+  const [imgFailed, setImgFailed] = useState(false);
   return (
     <div className="group overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] transition duration-300 hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.06]">
       <div className="relative aspect-square overflow-hidden">
-        {p.imageUrl ? (
-          <img src={p.imageUrl} alt={p.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+        {p.imageUrl && !imgFailed ? (
+          <img
+            src={p.imageUrl}
+            alt={p.name}
+            onError={() => setImgFailed(true)}
+            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+          />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-emerald-900/40 via-black to-pink-900/30">
             <span className="font-serif-display text-7xl text-white/15">{(p.name || 'O').charAt(0)}</span>

@@ -76,7 +76,7 @@ export default function InventoryDashboardPage() {
           max={m.totalProducts || 1}
           tone={healthPct > 85 ? 'emerald' : healthPct > 60 ? 'amber' : 'rose'}
         />
-        <p className="mt-2 text-[12px] text-slate-400">
+        <p className="mt-2 text-[12px] text-slate-500">
           {m.lowStockAlerts || 0} items below reorder level · {m.outOfStockCount || 0} out of stock
         </p>
       </GlassPanel>
@@ -88,14 +88,14 @@ export default function InventoryDashboardPage() {
           action={<Link href="/inventory/alerts" className="text-[12px] font-semibold text-amber-600 hover:text-amber-700">View all →</Link>}
         >
           {lowStock.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-400">All stock levels healthy ✓</p>
+            <p className="py-6 text-center text-sm text-slate-500">All stock levels healthy ✓</p>
           ) : (
             <div className="divide-y divide-slate-100">
               {lowStock.slice(0, 6).map((item) => (
                 <div key={item.id} className="flex items-center justify-between gap-4 py-3">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13px] font-semibold text-slate-800">{item.name || item.productName || '—'}</p>
-                    <p className="text-[12px] text-slate-400">{item.sku || '—'} · reorder at {item.reorder_level || item.reorderLevel || 0}</p>
+                    <p className="text-[12px] text-slate-500">{item.sku || '—'} · reorder at {item.reorder_level || item.reorderLevel || 0}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
                     <span className={`text-[13px] font-bold tabular-nums ${(item.stock_qty || item.stockQty || item.available || 0) === 0 ? 'text-rose-600' : 'text-amber-600'}`}>
@@ -115,7 +115,7 @@ export default function InventoryDashboardPage() {
           action={<Link href="/inventory/movements" className="text-[12px] font-semibold text-sky-600 hover:text-sky-700">View all →</Link>}
         >
           {movements.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-400">No movements recorded yet</p>
+            <p className="py-6 text-center text-sm text-slate-500">No movements recorded yet</p>
           ) : (
             <div className="divide-y divide-slate-100">
               {movements.map((mv, i) => (
@@ -124,7 +124,7 @@ export default function InventoryDashboardPage() {
                     <p className="truncate text-[13px] font-semibold text-slate-800">
                       {mv.product_name || mv.productName || mv.sku || `Product #${mv.product_id || mv.productId}`}
                     </p>
-                    <p className="text-[12px] text-slate-400">
+                    <p className="text-[12px] text-slate-500">
                       {mv.movement_type || mv.type || '—'} · {mv.reference || ''}
                     </p>
                   </div>

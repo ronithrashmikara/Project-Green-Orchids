@@ -93,13 +93,13 @@ export function CreditBar({ used = 0, limit = 0, className }) {
       <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
         <div className={cn('h-full rounded-full bg-gradient-to-r transition-all duration-700', color)} style={{ width: `${pct}%` }} />
       </div>
-      <p className="mt-1.5 text-xs font-medium text-slate-400">Available: {formatLKR(Math.max(0, limit - used))} ({pct.toFixed(0)}% used)</p>
+      <p className="mt-1.5 text-xs font-medium text-slate-500">Available: {formatLKR(Math.max(0, limit - used))} ({pct.toFixed(0)}% used)</p>
     </div>
   );
 }
 
 export function StockBand({ stock, minStock = 5 }) {
-  if (stock == null) return <span className="text-xs text-slate-400">Unknown</span>;
+  if (stock == null) return <span className="text-xs text-slate-500">Unknown</span>;
   if (stock <= 0) return <Badge variant="danger">Out of Stock</Badge>;
   if (stock <= minStock) return <Badge variant="warning">Low: {stock}</Badge>;
   return <Badge variant="success">In Stock: {stock}</Badge>;
@@ -123,7 +123,7 @@ export function PriceBlock({ basePrice, tierPrice, discount, tier, className }) 
     <div className={cn('space-y-1', className)}>
       {discount ? (
         <>
-          <span className="text-sm text-slate-400 line-through">{formatLKR(basePrice)}</span>
+          <span className="text-sm text-slate-500 line-through">{formatLKR(basePrice)}</span>
           <div className="flex items-center gap-2">
             <span className="text-2xl font-extrabold text-gradient">{formatLKR(tierPrice)}</span>
             <TierBadge tier={tier} />
@@ -153,9 +153,9 @@ export function KpiCard({ title, value, subtitle, trend, icon, tone = 'green', a
       <div className={cn('pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br opacity-15 blur-xl transition group-hover:opacity-30', t)} />
       <div className="relative flex items-start justify-between">
         <div className="min-w-0">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{title}</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{title}</p>
           <p className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">{value}</p>
-          {subtitle && <p className="mt-1 text-xs font-semibold text-slate-400">{subtitle}</p>}
+          {subtitle && <p className="mt-1 text-xs font-semibold text-slate-500">{subtitle}</p>}
           {trend != null && (
             <span className={cn('mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold', trend >= 0 ? 'bg-green-100 text-green-700' : 'bg-rose-100 text-rose-600')}>
               {trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}%
@@ -184,7 +184,7 @@ export function TimelineView({ events = [], className }) {
               <span className="text-sm font-semibold text-slate-900">{event.title || event.status}</span>
               {event.badge && <StatusBadge status={event.badge} />}
             </div>
-            <p className="text-xs text-slate-400">{event.timestamp || event.date}</p>
+            <p className="text-xs text-slate-500">{event.timestamp || event.date}</p>
             {event.description && <p className="mt-1 text-sm text-slate-600">{event.description}</p>}
           </div>
         </div>

@@ -76,7 +76,7 @@ export default function FinanceDashboardPage() {
           action={<Link href="/finance/invoices" className="text-[12px] font-semibold text-sky-600 hover:text-sky-700">View all →</Link>}
         >
           {data.invoices.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-400">No open invoices</p>
+            <p className="py-6 text-center text-sm text-slate-500">No open invoices</p>
           ) : (
             <div className="divide-y divide-slate-100">
               {data.invoices.map((inv) => (
@@ -84,7 +84,7 @@ export default function FinanceDashboardPage() {
                   className="flex items-center justify-between gap-4 py-3 -mx-5 px-5 rounded-xl transition hover:bg-slate-50">
                   <div className="min-w-0">
                     <p className="text-[13px] font-semibold text-slate-800">{inv.invoice_no || `INV-${inv.id}`}</p>
-                    <p className="text-[12px] text-slate-400">Due {formatDate(inv.due_date || inv.dueDate, 'dd MMM yyyy')}</p>
+                    <p className="text-[12px] text-slate-500">Due {formatDate(inv.due_date || inv.dueDate, 'dd MMM yyyy')}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
                     <span className="text-[13px] font-semibold text-slate-700">{formatLKR(inv.balance_due || inv.total_amount || 0)}</span>
@@ -102,14 +102,14 @@ export default function FinanceDashboardPage() {
           action={<Link href="/finance/payments" className="text-[12px] font-semibold text-emerald-600 hover:text-emerald-700">View all →</Link>}
         >
           {data.payments.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-400">No payments recorded yet</p>
+            <p className="py-6 text-center text-sm text-slate-500">No payments recorded yet</p>
           ) : (
             <div className="divide-y divide-slate-100">
               {data.payments.map((pay) => (
                 <div key={pay.id} className="flex items-center justify-between gap-4 py-3">
                   <div className="min-w-0">
                     <p className="text-[13px] font-semibold text-slate-800">{pay.payment_no || `PAY-${pay.id}`}</p>
-                    <p className="text-[12px] text-slate-400">{pay.method || '—'} · {formatDate(pay.created_at, 'dd MMM yyyy')}</p>
+                    <p className="text-[12px] text-slate-500">{pay.method || '—'} · {formatDate(pay.created_at, 'dd MMM yyyy')}</p>
                   </div>
                   <span className="text-[13px] font-semibold text-emerald-600">+{formatLKR(pay.amount || 0)}</span>
                 </div>

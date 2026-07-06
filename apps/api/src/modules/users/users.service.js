@@ -57,7 +57,7 @@ const usersService = {
       try {
         await sendMail({
           to: data.email,
-          subject: 'Set up your password - ORCHIDS Staff',
+          subject: 'Set up your password - Orchids Staff',
           template: 'reset_password',
           data: { name: data.name, resetUrl: `${process.env.CORS_ORIGIN || ''}/setup-password/${setupToken}` },
         });

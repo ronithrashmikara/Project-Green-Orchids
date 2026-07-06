@@ -116,7 +116,7 @@ export default function ProductsPage() {
 
   const cols = [
     { key: 'select', label: <input type="checkbox" onChange={(e) => setSelected(e.target.checked ? new Set(products.map((p) => p.id)) : new Set())} checked={selected.size === products.length && products.length > 0} />, render: (_, r) => <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleSelect(r.id)} /> },
-    { key: 'imageUrl', label: 'Image', render: (v) => v ? <img src={v} className="w-10 h-10 object-cover rounded" /> : '🌿' },
+    { key: 'imageUrl', label: 'Image', render: (v, r) => v ? <img src={v} alt={r.name} className="w-10 h-10 object-cover rounded" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.insertAdjacentText('afterend', '🌿'); }} /> : '🌿' },
     { key: 'sku', label: 'SKU' },
     { key: 'name', label: 'Name' },
     { key: 'category', label: 'Category' },

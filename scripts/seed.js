@@ -405,7 +405,7 @@ async function seed() {
         VALUES ($1,$2,$3,$4,$5,'ORCHID',$6,$7,$8,$9,$10,$11,'ACTIVE')
         RETURNING id
       `, [
-        sku, orchid.name, `${orchid.name} - premium quality orchid from ORCHIDS collection`,
+        sku, orchid.name, `${orchid.name} - premium quality orchid from the Orchids collection`,
         catId, pick(supplierIds), orchid.unit, basePrice, moq,
         stockQty, reservedQty, Math.floor(stockQty * 0.2),
       ]);
@@ -839,7 +839,7 @@ async function seed() {
     await pool.query(`
       INSERT INTO cms_blocks (key, type, content, is_published, updated_by)
       VALUES
-        ('home_hero', 'HERO', '{"heading":"Welcome to ORCHIDS","subheading":"Premium Wholesale Orchids from Sri Lanka","cta_text":"Browse Catalogue","cta_url":"/products","background_image":"/assets/hero-orchids.jpg"}', true, $1),
+        ('home_hero', 'HERO', '{"heading":"Welcome to Orchids","subheading":"Premium Wholesale Orchids from Sri Lanka","cta_text":"Browse Catalogue","cta_url":"/products","background_image":"/assets/hero-orchids.jpg"}', true, $1),
         ('announcement_bar', 'BANNER', '{"text":"🎉 Free delivery on orders over LKR 100,000","enabled":true,"bg_color":"#2d6a4f","text_color":"#ffffff"}', true, $1)
       ON CONFLICT (key) DO UPDATE
         SET content = EXCLUDED.content, updated_by = EXCLUDED.updated_by, updated_at = NOW()

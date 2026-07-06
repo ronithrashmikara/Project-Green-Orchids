@@ -183,7 +183,7 @@ export default function ProductFormPage({ isEdit = false }) {
             <FileUpload label="Upload Product Image" onUpload={handleImageUpload} />
             {(product?.images || []).length > 0 ? (
               <div className="flex flex-wrap gap-2">
-                {product.images.map((img, i) => <img key={i} src={img} className="w-24 h-24 object-cover rounded border" />)}
+                {product.images.map((img, i) => <img key={i} src={img} alt={`${form.name || 'Product'} image ${i + 1}`} className="w-24 h-24 object-cover rounded border" />)}
               </div>
             ) : <p className="text-sm text-gray-500">No images yet.</p>}
           </div>

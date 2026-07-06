@@ -84,7 +84,7 @@ export default function BuyerDashboardPage() {
             format={formatLKR}
             tone={creditHealthTone}
           />
-          <p className="mt-2 text-[12px] text-slate-400">
+          <p className="mt-2 text-[12px] text-slate-500">
             {(100 - usedPct).toFixed(0)}% available · {formatLKR(Math.max((s.creditLimit || 0) - (s.creditUsed || 0), 0))} remaining
           </p>
         </GlassPanel>
@@ -99,7 +99,7 @@ export default function BuyerDashboardPage() {
         >
           {orders.length === 0 ? (
             <div className="py-8 text-center">
-              <p className="text-sm text-slate-400">No orders placed yet.</p>
+              <p className="text-sm text-slate-500">No orders placed yet.</p>
               <Link href="/buyer/catalogue" className="mt-2 inline-block text-[13px] font-semibold text-violet-600 hover:text-violet-700">Browse the catalogue →</Link>
             </div>
           ) : (
@@ -109,7 +109,7 @@ export default function BuyerDashboardPage() {
                   className="flex items-center justify-between gap-4 py-3 -mx-5 px-5 rounded-xl transition hover:bg-slate-50">
                   <div className="min-w-0">
                     <p className="text-[13px] font-semibold text-slate-800">#{o.order_no || o.orderNumber || o.id}</p>
-                    <p className="text-[12px] text-slate-400">{formatDate(o.created_at || o.createdAt, 'dd MMM yyyy')}</p>
+                    <p className="text-[12px] text-slate-500">{formatDate(o.created_at || o.createdAt, 'dd MMM yyyy')}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
                     <span className="text-[13px] font-semibold text-slate-700">{formatLKR(o.total || 0)}</span>
@@ -128,7 +128,7 @@ export default function BuyerDashboardPage() {
         >
           {rfqs.length === 0 ? (
             <div className="py-8 text-center">
-              <p className="text-sm text-slate-400">No RFQs submitted yet.</p>
+              <p className="text-sm text-slate-500">No RFQs submitted yet.</p>
               <Link href="/buyer/rfq/new" className="mt-2 inline-block text-[13px] font-semibold text-sky-600 hover:text-sky-700">Submit a quote request →</Link>
             </div>
           ) : (
@@ -138,7 +138,7 @@ export default function BuyerDashboardPage() {
                   className="flex items-center justify-between gap-4 py-3 -mx-5 px-5 rounded-xl transition hover:bg-slate-50">
                   <div className="min-w-0">
                     <p className="text-[13px] font-semibold text-slate-800">{r.rfq_no || `RFQ-${r.id}`}</p>
-                    <p className="text-[12px] text-slate-400">{formatDate(r.created_at || r.createdAt, 'dd MMM yyyy')}</p>
+                    <p className="text-[12px] text-slate-500">{formatDate(r.created_at || r.createdAt, 'dd MMM yyyy')}</p>
                   </div>
                   <StatusBadge status={r.status} />
                 </Link>
