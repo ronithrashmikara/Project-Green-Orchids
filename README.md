@@ -1,6 +1,6 @@
 <div align="center">
 
-![Project Green — Orchids](docs/media/branding/readme-banner.jpg)
+![Project Green — Orchids](https://raw.githubusercontent.com/InfiniteBloom-max/Project-Green-Orchids/main/docs/media/branding/readme-banner.jpg)
 
 # 🌸 Orchids — Project Green
 
@@ -76,7 +76,7 @@ the correct `jsconfig.json`.
 
 ## Public Homepage
 
-![Homepage](docs/media/screenshots/homepage.png)
+![Homepage](https://raw.githubusercontent.com/InfiniteBloom-max/Project-Green-Orchids/main/docs/media/screenshots/homepage.png)
 
 ---
 
@@ -86,7 +86,7 @@ the correct `jsconfig.json`.
 types, 3 supply types), each with a real product photo — search, type/category
 filters, and live stock bands, all browsable before signing in:
 
-![Catalogue](docs/media/screenshots/catalogue.png)
+![Catalogue](https://raw.githubusercontent.com/InfiniteBloom-max/Project-Green-Orchids/main/docs/media/screenshots/catalogue.png)
 
 ### Product photography
 
@@ -94,7 +94,7 @@ Every product image is AI-generated (Stable Diffusion XL) from a fixed set of
 70 prompts — 5 distinct photo briefs per category, covering colour, form and
 packaging variety so the grid doesn't look repetitive:
 
-![Sample catalogue photos](docs/media/screenshots/catalogue-sample-images.png)
+![Sample catalogue photos](https://raw.githubusercontent.com/InfiniteBloom-max/Project-Green-Orchids/main/docs/media/screenshots/catalogue-sample-images.png)
 
 The full prompt list lives in
 [`docs/image-assets/catalogue-image-generation-prompts.md`](docs/image-assets/catalogue-image-generation-prompts.md),
@@ -113,19 +113,19 @@ the same mapping to an already-seeded database without a destructive reseed.
 Six distinct role-based portals, each with its own dark glassmorphism theme:
 
 ### Admin Suite — Operations Dashboard
-![Admin Dashboard](docs/media/screenshots/admin-dashboard.png)
+![Admin Dashboard](https://raw.githubusercontent.com/InfiniteBloom-max/Project-Green-Orchids/main/docs/media/screenshots/admin-dashboard.png)
 
 ### Trade Portal — Buyer Dashboard
-![Buyer Dashboard](docs/media/screenshots/buyer-dashboard.png)
+![Buyer Dashboard](https://raw.githubusercontent.com/InfiniteBloom-max/Project-Green-Orchids/main/docs/media/screenshots/buyer-dashboard.png)
 
 ### Finance Desk — Financial Overview
-![Finance Dashboard](docs/media/screenshots/finance-dashboard.png)
+![Finance Dashboard](https://raw.githubusercontent.com/InfiniteBloom-max/Project-Green-Orchids/main/docs/media/screenshots/finance-dashboard.png)
 
 ### Inventory Hub — Stock Overview
-![Inventory Dashboard](docs/media/screenshots/inventory-dashboard.png)
+![Inventory Dashboard](https://raw.githubusercontent.com/InfiniteBloom-max/Project-Green-Orchids/main/docs/media/screenshots/inventory-dashboard.png)
 
 ### Delivery Centre — Coordinator Dashboard
-![Delivery Dashboard](docs/media/screenshots/delivery-dashboard.png)
+![Delivery Dashboard](https://raw.githubusercontent.com/InfiniteBloom-max/Project-Green-Orchids/main/docs/media/screenshots/delivery-dashboard.png)
 
 ---
 
