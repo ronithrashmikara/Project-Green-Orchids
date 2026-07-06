@@ -14,7 +14,7 @@ async function quoteExpiry() {
     for (const rfq of warningRfqs.rows) {
       try {
         await sendMail({
-          to: rfq.email, subject: 'RFQ Quote Expiring Soon - ORCHIDS', template: 'rfq_quoted',
+          to: rfq.email, subject: 'RFQ Quote Expiring Soon - Orchids', template: 'rfq_quoted',
           data: { name: rfq.name, rfqNumber: rfq.rfq_number, totalAmount: '', quoteExpiry: rfq.quote_expiry, rfqUrl: '' },
         });
       } catch (_) {}

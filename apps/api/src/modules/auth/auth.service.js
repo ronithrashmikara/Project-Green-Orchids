@@ -105,7 +105,7 @@ const authService = {
     try {
       await sendMail({
         to: email,
-        subject: 'Your verification code - ORCHIDS',
+        subject: 'Your verification code - Orchids',
         template: 'verify_email',
         data: {
           name,
@@ -297,7 +297,7 @@ const authService = {
     try {
       await sendMail({
         to: email,
-        subject: 'Your new verification code - ORCHIDS',
+        subject: 'Your new verification code - Orchids',
         template: 'verify_email',
         data: { name: user.name, code: otp, expiryMinutes: OTP_EXPIRY_MINUTES },
       });
@@ -324,7 +324,7 @@ const authService = {
     try {
       await sendMail({
         to: email,
-        subject: 'Reset your password - ORCHIDS',
+        subject: 'Reset your password - Orchids',
         template: 'reset_password',
         data: {
           name: user.name,
@@ -358,7 +358,7 @@ const authService = {
       const user = await authRepository.findUserById(emailToken.user_id);
       await sendMail({
         to: user.email,
-        subject: 'Password Changed - ORCHIDS',
+        subject: 'Password Changed - Orchids',
         template: 'password_changed',
         data: { name: user.name, changedAt: new Date().toISOString() },
       });

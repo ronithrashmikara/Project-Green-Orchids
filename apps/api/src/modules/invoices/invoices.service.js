@@ -49,7 +49,7 @@ const service = {
     // never prints "LKR -0.00" on the PDF.
     const fmt = (n) => `LKR ${(Math.abs(Number(n)) < 0.005 ? 0 : Number(n)).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-    page.drawText('ORCHIDS', { x: 50, y, size: 20, font: bold, color: rgb(0.17, 0.42, 0.31) });
+    page.drawText('Orchids', { x: 50, y, size: 20, font: bold, color: rgb(0.17, 0.42, 0.31) });
     page.drawText('Invoice', { x: 450, y, size: 20, font: bold });
     y -= 40;
 
@@ -128,7 +128,7 @@ const service = {
     // never prints "LKR -0.00" on the PDF.
     const fmt = (n) => `LKR ${(Math.abs(Number(n)) < 0.005 ? 0 : Number(n)).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-    page.drawText('ORCHIDS', { x: 50, y, size: 20, font: bold, color: rgb(0.17, 0.42, 0.31) });
+    page.drawText('Orchids', { x: 50, y, size: 20, font: bold, color: rgb(0.17, 0.42, 0.31) });
     page.drawText('Statement', { x: 420, y, size: 20, font: bold });
     y -= 40;
     page.drawText(`Account: ${buyerName || '-'}`, { x: 50, y, size: 11, font: bold });

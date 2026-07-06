@@ -2,7 +2,7 @@
 
 ![Project Green — Orchids](docs/media/branding/readme-banner.jpg)
 
-# 🌸 ORCHIDS — Project Green
+# 🌸 Orchids — Project Green
 
 ### B2B Wholesale Orchid Trade Platform
 
@@ -320,5 +320,5 @@ Each role logs in to their own workspace:
 ---
 
 <div align="center">
-Built with Next.js, Express, and PostgreSQL · ORCHIDS 2026
+Built with Next.js, Express, and PostgreSQL · Orchids 2026
 </div>

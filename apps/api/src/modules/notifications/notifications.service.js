@@ -16,7 +16,7 @@ const service = {
 
     try {
       await sendMail({
-        to: item.recipient_email, subject: `ORCHIDS: ${item.template}`,
+        to: item.recipient_email, subject: `Orchids: ${item.template}`,
         template: item.template, data: item.payload || {},
       });
       await repo.updateStatus(null, id, 'SENT');

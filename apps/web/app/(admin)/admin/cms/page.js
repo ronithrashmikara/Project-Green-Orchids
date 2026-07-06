@@ -128,7 +128,7 @@ function HomepageTab({ blocks }) {
             <GlassField label="Video URL"><GlassInput value={f('hero').videoUrl || ''} onChange={(e) => set('hero', 'videoUrl', e.target.value)} placeholder="/hero.mp4" /></GlassField>
             <GlassField label="Poster image URL"><GlassInput value={f('hero').posterUrl || ''} onChange={(e) => set('hero', 'posterUrl', e.target.value)} placeholder="/hero-poster.jpg" /></GlassField>
           </div>
-          <GlassField label="Headline"><GlassInput value={f('hero').headline || ''} onChange={(e) => set('hero', 'headline', e.target.value)} placeholder="Welcome to ORCHIDS" /></GlassField>
+          <GlassField label="Headline"><GlassInput value={f('hero').headline || ''} onChange={(e) => set('hero', 'headline', e.target.value)} placeholder="Welcome to Orchids" /></GlassField>
           <GlassField label="Subheadline"><GlassInput value={f('hero').subheadline || ''} onChange={(e) => set('hero', 'subheadline', e.target.value)} placeholder="Sri Lanka's premier wholesale orchid marketplace" /></GlassField>
           <div className="grid gap-4 sm:grid-cols-2">
             <GlassField label="CTA button text"><GlassInput value={f('hero').ctaText || ''} onChange={(e) => set('hero', 'ctaText', e.target.value)} placeholder="Browse Catalogue" /></GlassField>
@@ -171,7 +171,7 @@ function HomepageTab({ blocks }) {
 
       <GlassPanel title="About section" subtitle="Company story and identity block.">
         <div className="space-y-4">
-          <GlassField label="Title"><GlassInput value={f('about_section').title || ''} onChange={(e) => set('about_section', 'title', e.target.value)} placeholder="About ORCHIDS" /></GlassField>
+          <GlassField label="Title"><GlassInput value={f('about_section').title || ''} onChange={(e) => set('about_section', 'title', e.target.value)} placeholder="About Orchids" /></GlassField>
           <GlassField label="Body text"><GlassTextarea value={f('about_section').body || ''} onChange={(e) => set('about_section', 'body', e.target.value)} placeholder="Our story..." rows={5} /></GlassField>
           <GlassField label="Image URL"><GlassInput value={f('about_section').imageUrl || ''} onChange={(e) => set('about_section', 'imageUrl', e.target.value)} placeholder="/about.jpg" /></GlassField>
           <div className="flex justify-end"><SaveButton loading={saving.about_section} onClick={() => save('about_section')} /></div>
@@ -219,9 +219,9 @@ function BrandingTab({ blocks }) {
       <GlassPanel title="Brand identity" subtitle="Logo, company name and footer text.">
         <div className="space-y-4">
           <GlassField label="Logo URL"><GlassInput value={f('brand').logoUrl || ''} onChange={(e) => set('brand', 'logoUrl', e.target.value)} placeholder="/logo.svg" /></GlassField>
-          <GlassField label="Company name"><GlassInput value={f('brand').companyName || ''} onChange={(e) => set('brand', 'companyName', e.target.value)} placeholder="ORCHIDS" /></GlassField>
+          <GlassField label="Company name"><GlassInput value={f('brand').companyName || ''} onChange={(e) => set('brand', 'companyName', e.target.value)} placeholder="Orchids" /></GlassField>
           <GlassField label="Tagline"><GlassInput value={f('brand').tagline || ''} onChange={(e) => set('brand', 'tagline', e.target.value)} placeholder="Sri Lanka's premier wholesale orchid marketplace" /></GlassField>
-          <GlassField label="Footer text"><GlassInput value={f('brand').footerText || ''} onChange={(e) => set('brand', 'footerText', e.target.value)} placeholder="© 2026 ORCHIDS. All rights reserved." /></GlassField>
+          <GlassField label="Footer text"><GlassInput value={f('brand').footerText || ''} onChange={(e) => set('brand', 'footerText', e.target.value)} placeholder="© 2026 Orchids. All rights reserved." /></GlassField>
           <div className="flex justify-end"><SaveButton loading={saving.brand} onClick={() => save('brand')} /></div>
         </div>
       </GlassPanel>

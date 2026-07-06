@@ -83,7 +83,7 @@ async function sendMail({ to, subject, template, data, html }) {
   const bodyHtml = html || renderTemplate(template, data);
 
   const mailOptions = {
-    from: `"ORCHIDS" <${env.EMAIL_FROM}>`,
+    from: `"Orchids" <${env.EMAIL_FROM}>`,
     to,
     subject,
     html: bodyHtml,
