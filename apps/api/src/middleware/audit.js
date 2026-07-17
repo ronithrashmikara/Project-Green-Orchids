@@ -9,8 +9,12 @@ function redactSensitive(obj, seen = new WeakSet()) {
   if (!obj || typeof obj !== 'object') return obj;
   if (seen.has(obj)) return '[Circular]';
   seen.add(obj);
-  if (Array.isArray(obj)) return obj.map(v => redactSensitive(v, seen));
-  return Object.fromEntries(
+  if (Array.isArray(obj)) {
+    const result = obj.map(v => redactSensitive(v, seen));
+    seen.delete(obj);
+    return result;
+  }
+  const result = Object.fromEntries(
     Object.entries(obj)
       .filter(([key]) => !['__proto__', 'prototype', 'constructor'].includes(key))
       .map(([key, value]) => [
@@ -18,6 +22,8 @@ function redactSensitive(obj, seen = new WeakSet()) {
         REDACT_RE.test(key) ? '[REDACTED]' : redactSensitive(value, seen),
       ])
   );
+  seen.delete(obj);
+  return result;
 }
 
 // audit_logs schema columns: actor_id, actor_role, action, entity_type, entity_id,

@@ -50,7 +50,9 @@ const getPodFile = async (req, res, next) => {
     res.setHeader('Cache-Control', 'private, max-age=300');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.sendFile(filename, { root: path.join(UPLOADS_ROOT, 'pod'), dotfiles: 'deny' }, (err) => {
-      if (err && !res.headersSent) next(new AppError('POD_NOT_FOUND', 'Proof-of-delivery file not found', 404));
+      if (!err) return;
+      if (!res.headersSent) return next(new AppError('POD_NOT_FOUND', 'Proof-of-delivery file not found', 404));
+      return next(err);
     });
   } catch (e) { next(e); }
 };
