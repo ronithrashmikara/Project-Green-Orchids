@@ -77,6 +77,8 @@ api.use('/orders', require('./modules/orders/orders.routes'));
 api.use('/invoices', require('./modules/invoices/invoices.routes'));
 api.use('/payments', require('./modules/payments/payments.routes'));
 api.use('/rma', require('./modules/rma/rma.routes'));
+api.use('/complaints', require('./modules/complaints/complaints.routes'));
+api.use('/sales', require('./modules/sales/sales.routes'));
 api.use('/deliveries', require('./modules/delivery/delivery.routes'));
 api.use('/inventory', require('./modules/inventory/inventory.routes'));
 api.use('/reports', require('./modules/reports/reports.routes'));

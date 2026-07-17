@@ -30,6 +30,7 @@ export default function LoginPage() {
         case 'INVENTORY_MANAGER': router.push('/inventory/dashboard'); break;
         case 'FINANCE_OFFICER': router.push('/finance/dashboard'); break;
         case 'DELIVERY_COORDINATOR': router.push('/delivery/dashboard'); break;
+        case 'SALES_MANAGER': router.push('/sales/dashboard'); break;
         default: router.push('/');
       }
     } catch (err) {

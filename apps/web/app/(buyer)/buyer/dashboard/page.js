@@ -3,16 +3,16 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import api from '@/lib/api';
-import { Spinner } from '@/components/ui/Spinner';
+import { DashboardSkeleton } from '@/components/ui/DashboardSkeleton';
 import { StatusBadge } from '@/components/domain/StatusBadge';
 import { formatLKR, formatDate } from '@/lib/utils';
-import { ActionTile, DashboardHero, GlassPanel, MetricCard, PrimaryAction, ProgressLine } from '@/components/domain/DashboardUI';
+import { ActionTile, DashboardHero, EmptyState, GlassPanel, MetricCard, PrimaryAction, ProgressLine } from '@/components/domain/DashboardUI';
 
 const quickActions = [
-  { href: '/buyer/catalogue', title: 'Browse catalogue',    description: 'Shop from 500+ orchid varieties.',  icon: '🌺', tone: 'emerald' },
-  { href: '/buyer/cart',      title: 'View cart',           description: 'Review your current cart items.',   icon: '🛒', tone: 'violet'  },
-  { href: '/buyer/rfq/new',   title: 'Submit an RFQ',       description: 'Request a quote for bulk orders.',  icon: '📋', tone: 'sky'     },
-  { href: '/buyer/orders',    title: 'Order history',       description: 'Track all your placed orders.',     icon: '📦', tone: 'amber'   },
+  { href: '/buyer/catalogue', title: 'Browse catalogue',    description: 'Shop from 500+ orchid varieties.',  icon: 'orchid', tone: 'emerald' },
+  { href: '/buyer/cart',      title: 'View cart',           description: 'Review your current cart items.',   icon: 'cart',   tone: 'violet'  },
+  { href: '/buyer/rfq/new',   title: 'Submit an RFQ',       description: 'Request a quote for bulk orders.',  icon: 'rfq',    tone: 'sky'     },
+  { href: '/buyer/orders',    title: 'Order history',       description: 'Track all your placed orders.',     icon: 'orders', tone: 'amber'   },
 ];
 
 export default function BuyerDashboardPage() {
@@ -38,7 +38,7 @@ export default function BuyerDashboardPage() {
     })();
   }, []);
 
-  if (loading) return <Spinner className="py-24" size="lg" />;
+  if (loading) return <DashboardSkeleton />;
   if (error)   return <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm font-medium text-rose-700">Failed to load: {error}</div>;
 
   const s = summary || {};
@@ -68,10 +68,10 @@ export default function BuyerDashboardPage() {
 
       {/* Credit + key metrics */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Credit limit"     value={formatLKR(s.creditLimit || 0)}  detail="Total approved credit"   icon="💳" tone="emerald" />
-        <MetricCard label="Credit used"      value={formatLKR(s.creditUsed || 0)}   detail="Outstanding balance"     icon="📊" tone={creditHealthTone} />
-        <MetricCard label="Invoices due"     value={s.invoicesDue ?? '—'}           detail="Unpaid invoices"         icon="📄" tone="amber"   href="/buyer/invoices" />
-        <MetricCard label="Payment term"     value={s.paymentTerm || s.payment_term || '—'} detail="Your credit terms" icon="📅" tone="sky" />
+        <MetricCard label="Credit limit"     value={formatLKR(s.creditLimit || 0)}  detail="Total approved credit"   icon="payment"   tone="emerald" />
+        <MetricCard label="Credit used"      value={formatLKR(s.creditUsed || 0)}   detail="Outstanding balance"     icon="analytics" tone={creditHealthTone} />
+        <MetricCard label="Invoices due"     value={s.invoicesDue ?? '—'}           detail="Unpaid invoices"         icon="invoices"  tone="amber"   href="/buyer/invoices" />
+        <MetricCard label="Payment term"     value={s.paymentTerm || s.payment_term || '—'} detail="Your credit terms" icon="calendar" tone="sky" />
       </div>
 
       {/* Credit utilisation bar */}
@@ -98,10 +98,13 @@ export default function BuyerDashboardPage() {
           action={<Link href="/buyer/orders" className="text-[12px] font-semibold text-violet-600 hover:text-violet-700">View all →</Link>}
         >
           {orders.length === 0 ? (
-            <div className="py-8 text-center">
-              <p className="text-sm text-slate-500">No orders placed yet.</p>
-              <Link href="/buyer/catalogue" className="mt-2 inline-block text-[13px] font-semibold text-violet-600 hover:text-violet-700">Browse the catalogue →</Link>
-            </div>
+            <EmptyState
+              icon="orders"
+              title="No orders placed yet"
+              description="Once you place your first order it will show up here with live status."
+              action={{ href: '/buyer/catalogue', label: 'Browse the catalogue' }}
+              tone="violet"
+            />
           ) : (
             <div className="divide-y divide-slate-100">
               {orders.map((o) => (
@@ -127,10 +130,13 @@ export default function BuyerDashboardPage() {
           action={<Link href="/buyer/rfqs" className="text-[12px] font-semibold text-sky-600 hover:text-sky-700">View all →</Link>}
         >
           {rfqs.length === 0 ? (
-            <div className="py-8 text-center">
-              <p className="text-sm text-slate-500">No RFQs submitted yet.</p>
-              <Link href="/buyer/rfq/new" className="mt-2 inline-block text-[13px] font-semibold text-sky-600 hover:text-sky-700">Submit a quote request →</Link>
-            </div>
+            <EmptyState
+              icon="rfq"
+              title="No RFQs submitted yet"
+              description="Need bulk pricing? Send us a quote request and track it here."
+              action={{ href: '/buyer/rfq/new', label: 'Submit a quote request' }}
+              tone="sky"
+            />
           ) : (
             <div className="divide-y divide-slate-100">
               {rfqs.map((r) => (

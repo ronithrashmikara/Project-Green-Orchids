@@ -1,0 +1,126 @@
+/* Central icon registry — one lucide-react icon per semantic slot, so nav,
+   metric cards, tiles and states share a consistent icon language.
+   Import { Icon } from '@/lib/icons' and render <Icon name="orders" />. */
+import {
+  LayoutDashboard, LayoutGrid, ShoppingCart, ClipboardList, FileText, FileQuestion,
+  Package, Boxes, Truck, Users, UserRound, Building2, Factory, Wallet, CreditCard,
+  Receipt, ReceiptText, BadgeDollarSign, BarChart3, TrendingUp, TrendingDown, Bell,
+  BellRing, Settings, ShieldCheck, KeyRound, Lock, LogOut, Search, Filter, Plus,
+  Pencil, Edit3, Trash2, Check, CheckCircle2, XCircle, X, ChevronDown, ChevronLeft,
+  ChevronRight, ChevronsLeft, ChevronsRight, ArrowRight, ArrowLeft, ArrowUpRight,
+  RotateCcw, RefreshCw, AlertTriangle, AlertCircle, Info, Eye, EyeOff, Upload,
+  Download, Image as ImageIcon, Camera, Calendar, Clock, History, ListChecks,
+  MapPin, Phone, Mail, Globe, Leaf, Sprout, Flower2, Percent, Tags, Landmark,
+  FileWarning, FileCheck, CircleDollarSign, PieChart, Activity, Archive,
+  ClipboardCheck, Send, Star, HeartHandshake, Timer, Ban, Minus,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+const registry = {
+  dashboard: LayoutDashboard,
+  grid: LayoutGrid,
+  catalogue: LayoutGrid,
+  cart: ShoppingCart,
+  orders: ClipboardList,
+  order: ClipboardCheck,
+  rfq: FileQuestion,
+  quotes: FileText,
+  invoices: ReceiptText,
+  invoice: Receipt,
+  payments: Wallet,
+  payment: CreditCard,
+  statements: FileText,
+  products: Package,
+  inventory: Boxes,
+  stock: Boxes,
+  movements: History,
+  delivery: Truck,
+  deliveries: Truck,
+  buyers: Users,
+  users: Users,
+  user: UserRound,
+  suppliers: Factory,
+  pricing: Tags,
+  tiers: Percent,
+  reports: BarChart3,
+  analytics: PieChart,
+  finance: Landmark,
+  credit: CircleDollarSign,
+  revenue: BadgeDollarSign,
+  returns: RotateCcw,
+  rma: RotateCcw,
+  alerts: BellRing,
+  bell: Bell,
+  settings: Settings,
+  security: ShieldCheck,
+  key: KeyRound,
+  lock: Lock,
+  logout: LogOut,
+  search: Search,
+  filter: Filter,
+  plus: Plus,
+  edit: Pencil,
+  editAlt: Edit3,
+  delete: Trash2,
+  check: Check,
+  checkCircle: CheckCircle2,
+  xCircle: XCircle,
+  close: X,
+  chevronDown: ChevronDown,
+  chevronLeft: ChevronLeft,
+  chevronRight: ChevronRight,
+  chevronsLeft: ChevronsLeft,
+  chevronsRight: ChevronsRight,
+  arrowRight: ArrowRight,
+  arrowLeft: ArrowLeft,
+  arrowUpRight: ArrowUpRight,
+  refresh: RefreshCw,
+  warning: AlertTriangle,
+  alert: AlertCircle,
+  info: Info,
+  eye: Eye,
+  eyeOff: EyeOff,
+  upload: Upload,
+  download: Download,
+  image: ImageIcon,
+  camera: Camera,
+  calendar: Calendar,
+  clock: Clock,
+  history: History,
+  tasks: ListChecks,
+  location: MapPin,
+  phone: Phone,
+  mail: Mail,
+  globe: Globe,
+  leaf: Leaf,
+  sprout: Sprout,
+  orchid: Flower2,
+  trendUp: TrendingUp,
+  trendDown: TrendingDown,
+  fileWarning: FileWarning,
+  fileCheck: FileCheck,
+  activity: Activity,
+  archive: Archive,
+  send: Send,
+  star: Star,
+  handshake: HeartHandshake,
+  timer: Timer,
+  ban: Ban,
+  minus: Minus,
+};
+
+export function Icon({ name, size = 16, className, strokeWidth = 2, ...props }) {
+  const Cmp = registry[name] || Info;
+  return (
+    <Cmp
+      width={size}
+      height={size}
+      strokeWidth={strokeWidth}
+      className={cn('shrink-0', className)}
+      aria-hidden="true"
+      {...props}
+    />
+  );
+}
+
+export { registry as iconRegistry };

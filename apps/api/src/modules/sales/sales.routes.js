@@ -1,0 +1,11 @@
+const { Router } = require('express');
+const c = require('./sales.controller');
+const { requireAuth } = require('../../middleware/auth');
+const { requirePermission } = require('../../middleware/rbac');
+const { validate } = require('../../middleware/validate');
+const { availabilitySchema } = require('./sales.schema');
+const r = Router(); r.use(requireAuth);
+r.get('/availability', requirePermission('complaint.handle', 'availability.manage'), c.listAvailability);
+r.patch('/availability', requirePermission('availability.manage'), validate({ body: availabilitySchema }), c.setAvailability);
+r.get('/queue', requirePermission('complaint.handle', 'order.approve'), c.queue);
+module.exports = r;

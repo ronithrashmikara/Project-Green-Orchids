@@ -19,6 +19,7 @@ export function middleware(request) {
     pathname.startsWith('/help-centre') ||
     pathname.startsWith('/privacy') ||
     pathname.startsWith('/terms') ||
+    pathname.startsWith('/cookies') ||
     pathname.startsWith('/status') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api')
@@ -51,6 +52,10 @@ export function middleware(request) {
   }
 
   if (pathname.startsWith('/delivery')) {
+    return NextResponse.next();
+  }
+
+  if (pathname.startsWith('/sales')) {
     return NextResponse.next();
   }
 

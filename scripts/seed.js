@@ -183,6 +183,9 @@ async function clearData(pool) {
 
   // Delete in reverse dependency order (children before parents)
   const tables = [
+    'complaint_messages',
+    'complaints',
+    'staff_availability',
     'delivery_events',
     'deliveries',
     'rma_items',
@@ -225,7 +228,13 @@ async function clearData(pool) {
 
   try {
     for (const table of tables) {
-      await pool.query(`DELETE FROM ${table}`);
+      try {
+        await pool.query(`DELETE FROM ${table}`);
+      } catch (err) {
+        // 42P01 = undefined_table: tolerate tables from migrations not yet applied
+        // (e.g. complaints/staff_availability from 0016 on an older database).
+        if (err.code !== '42P01') throw err;
+      }
     }
 
     // Reset sequences
@@ -241,6 +250,7 @@ async function clearData(pool) {
       'deliveries_id_seq', 'delivery_events_id_seq',
       'stock_alerts_id_seq',
       'price_change_requests_id_seq',
+      'complaints_id_seq', 'complaint_messages_id_seq',
     ];
     for (const seq of sequences) {
       try {
@@ -286,6 +296,10 @@ async function seed() {
     const migDir = path.resolve(__dirname, '..', 'apps', 'api', 'migrations');
     const sql0002 = fs.readFileSync(path.join(migDir, '0002_roles_permissions.sql'), 'utf8');
     await pool.query(sql0002);
+    // 0016 adds the SALES_MANAGER role + complaint/availability permissions
+    // (idempotent, so re-running the whole file here is safe).
+    const sql0016 = fs.readFileSync(path.join(migDir, '0016_sales_managers_complaints.sql'), 'utf8');
+    await pool.query(sql0016);
 
     const { rows: rolesList } = await pool.query('SELECT id, name FROM roles');
     const roleMap = {};
@@ -312,7 +326,29 @@ async function seed() {
       `, [s.email, STAFF_PASSWORD_HASH, s.name, roleMap[s.role]]);
       staffUsers[s.role] = u;
     }
-    console.log('   → 5 staff users created');
+
+    // Sales managers (two of them, so availability-based assignment is observable):
+    // sales1 starts AVAILABLE, sales2 starts AWAY.
+    const salesDefs = [
+      { email: 'sales1@example.invalid', name: 'Sales Manager One', availability: 'AVAILABLE' },
+      { email: 'sales2@example.invalid', name: 'Sales Manager Two', availability: 'AWAY' },
+    ];
+    const salesManagerUsers = [];
+    for (const s of salesDefs) {
+      const { rows: [u] } = await pool.query(`
+        INSERT INTO users (email, password_hash, full_name, role_id, status, email_verified_at)
+        VALUES ($1, $2, $3, $4, 'ACTIVE', NOW())
+        ON CONFLICT (email) DO UPDATE SET full_name = EXCLUDED.full_name
+        RETURNING id, email
+      `, [s.email, STAFF_PASSWORD_HASH, s.name, roleMap['SALES_MANAGER']]);
+      await pool.query(`
+        INSERT INTO staff_availability (user_id, status, updated_at)
+        VALUES ($1, $2, NOW())
+        ON CONFLICT (user_id) DO UPDATE SET status = EXCLUDED.status, updated_at = NOW()
+      `, [u.id, s.availability]);
+      salesManagerUsers.push(u);
+    }
+    console.log(`   → ${staffDefs.length + salesDefs.length} staff users created (incl. ${salesDefs.length} sales managers)`);
 
     // ---- 4. Suppliers ----
     console.log('🏭 Seeding suppliers…');

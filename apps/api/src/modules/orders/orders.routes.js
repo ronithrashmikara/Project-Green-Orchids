@@ -10,6 +10,7 @@ r.post('/', requireApprovedBuyer, validate({ body: createSchema }), c.create);
 r.post('/from-rfq', requireApprovedBuyer, validate({ body: createFromRfqSchema }), c.createFromRfq);
 r.get('/', c.list);
 r.get('/:id', c.get);
+r.patch('/:id/claim', requirePermission('order.approve'), c.claim);
 r.patch('/:id/approve', requirePermission('order.approve'), c.approve);
 r.patch('/:id/reject', requirePermission('order.approve'), validate({ body: rejectSchema }), c.reject);
 r.patch('/:id/cancel', validate({ body: cancelSchema }), c.cancel);

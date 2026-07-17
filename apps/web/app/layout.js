@@ -1,5 +1,6 @@
 import './globals.css';
 import { Providers } from './providers';
+import { CookieConsent } from '@/components/CookieConsent';
 
 export const metadata = {
   title: 'Project Green - Wholesale Trade',
@@ -15,7 +16,10 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <CookieConsent />
+        </Providers>
       </body>
     </html>
   );

@@ -1,10 +1,12 @@
+import { clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 import { format, formatDistanceToNow } from 'date-fns';
 import { utcToZonedTime as toZonedTime } from 'date-fns-tz';
 
 const COLOMBO_TZ = 'Asia/Colombo';
 
 export function cn(...classes) {
-  return classes.filter(Boolean).join(' ');
+  return twMerge(clsx(...classes));
 }
 
 export function formatLKR(amount) {
@@ -16,10 +18,28 @@ export function formatLKR(amount) {
   return `LKR ${num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 }
 
-export function formatDate(date, fmt = 'yyyy-MM-dd HH:mm') {
+/* Compact currency for KPI cards / tight data displays:
+   LKR 1.2M, LKR 340K, LKR 985.00 — keeps metric cards on one line. */
+export function formatLKRCompact(amount) {
+  if (amount == null) return 'LKR 0';
+  let num = typeof amount === 'string' ? parseFloat(amount) : amount;
+  if (Math.abs(num) < 0.005) num = 0;
+  const abs = Math.abs(num);
+  const sign = num < 0 ? '-' : '';
+  if (abs >= 1_000_000) return `${sign}LKR ${(abs / 1_000_000).toFixed(abs >= 10_000_000 ? 0 : 1)}M`;
+  if (abs >= 100_000) return `${sign}LKR ${Math.round(abs / 1_000)}K`;
+  if (abs >= 10_000) return `${sign}LKR ${(abs / 1_000).toFixed(1)}K`;
+  return `${sign}LKR ${abs.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+}
+
+export function formatDate(date, fmt = 'dd MMM yyyy') {
   if (!date) return '';
   const zoned = toZonedTime(new Date(date), COLOMBO_TZ);
   return format(zoned, fmt);
+}
+
+export function formatDateTime(date) {
+  return formatDate(date, 'dd MMM yyyy, HH:mm');
 }
 
 export function formatDateShort(date) {

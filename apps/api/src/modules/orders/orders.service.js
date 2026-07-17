@@ -6,6 +6,7 @@ const { calculateLineTotal, calculateOrderTotal } = require('../../utils/money')
 const { paginate } = require('../../utils/pagination');
 const { enqueueEmail } = require('../../utils/outbox');
 const { dueDateForTerm } = require('../../utils/time');
+const { assignOrderForApproval } = require('../../utils/assignment');
 const repo = require('./orders.repository');
 
 // available stock = stock_qty - reserved_qty  (the plan's core invariant)
@@ -52,6 +53,9 @@ const service = {
         });
       }
       await repo.clearCart(client, accountId);
+      // Availability-based work distribution: hand the pending approval to the
+      // least-loaded AVAILABLE sales manager (unassigned when none available).
+      order.assigned_to = await assignOrderForApproval(client, order.id);
       // Outbox enqueue inside the same txn (Finding 22)
       await enqueueEmail(client, {
         recipientEmail: acct.email || null, recipientUserId: userId, template: 'order_submitted',
@@ -112,6 +116,8 @@ const service = {
       if (!converted) {
         throw new AppError('INVALID_STATE', 'RFQ was already converted by another request', 409);
       }
+      // Availability-based work distribution (same as cart orders).
+      order.assigned_to = await assignOrderForApproval(client, order.id);
     });
 
     // Compute availability warnings after creation (read-only)
@@ -145,6 +151,19 @@ const service = {
     }
     const items = await repo.findItems(id);
     return { ...order, items };
+  },
+
+  async claim(id, actor) {
+    const order = await repo.findById(id);
+    if (!order) throw new AppError('NOT_FOUND', 'Order not found', 404);
+    if (order.status !== 'PENDING_APPROVAL') {
+      throw new AppError('INVALID_TRANSITION', `Cannot claim an order in status ${order.status}`, 409);
+    }
+    const claimed = await repo.claimForApproval(id, actor);
+    if (!claimed) throw new AppError('ALREADY_ASSIGNED', 'Order is already assigned to another approver', 409);
+    await writeAudit({ actor, action: 'ORDER_CLAIMED', entityType: 'orders', entityId: String(id),
+      before: { assigned_to: null }, after: { assigned_to: actor } });
+    return claimed;
   },
 
   async approve(id, actor) {

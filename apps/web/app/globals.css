@@ -10,10 +10,11 @@
   --font-serif: 'Playfair Display', Georgia, serif;
 }
 
-/* Elegant italic serif wordmark (hero) */
+/* Serif display face for the wordmark and marketing headlines.
+   Italic is opt-in via `italic` — the class itself stays upright so
+   headings don't all collapse into one voice. */
 .font-serif-display {
   font-family: var(--font-serif);
-  font-style: italic;
   letter-spacing: -0.01em;
 }
 
@@ -45,24 +46,26 @@
 }
 .hero-rise { animation: hero-rise 1.1s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
-@keyframes twinkle {
-  0%, 100% { opacity: 0.15; transform: scale(0.8); }
-  50% { opacity: 0.9; transform: scale(1.15); }
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
+.animate-fade-in { animation: fade-in 0.15s ease-out both; }
 
-/* ============ Portal (light) ============
-   Portal pages sit on a white/slate-50 background.
-   The .portal-dark class is kept as a no-op for any legacy usage. */
-.portal-dark { /* intentionally empty — portals now use light theme */ }
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+.animate-slide-up { animation: slide-up 0.2s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Legacy no-op kept for any legacy usage. */
+.portal-dark { /* intentionally empty — portals use the light theme */ }
 
 * {
   box-sizing: border-box;
 }
 
-/* ---------- Accessible focus ring ----------
-   Ensures a visible focus indicator on every focusable element, even where
-   Tailwind's `outline-none` reset is applied without an explicit focus ring
-   (default browser outlines can also be invisible on the dark hero sections). */
+/* ---------- Accessible focus ring ---------- */
 :focus-visible {
   outline: 2px solid #12b981;
   outline-offset: 2px;
@@ -77,8 +80,8 @@ body {
   @apply text-slate-900 antialiased font-sans;
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   background:
-    radial-gradient(circle at 12% 0%, rgba(236, 37, 136, 0.14), transparent 30rem),
-    radial-gradient(circle at 88% 6%, rgba(18, 185, 129, 0.20), transparent 32rem),
+    radial-gradient(circle at 12% 0%, rgba(236, 37, 136, 0.10), transparent 30rem),
+    radial-gradient(circle at 88% 6%, rgba(18, 185, 129, 0.14), transparent 32rem),
     linear-gradient(135deg, #f6fbf8 0%, #eef8f1 50%, #fff6fb 100%);
 }
 
@@ -162,6 +165,7 @@ h1, h2, h3, h4, .font-display {
   padding: 0.2rem 0.6rem;
   border-radius: 9999px;
   line-height: 1.1;
+  white-space: nowrap;
 }
 
 /* ---------- Scrollbar ---------- */
@@ -204,4 +208,20 @@ h1, h2, h3, h4, .font-display {
   transform: translateX(-100%);
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
   animation: shimmer 1.6s infinite;
+}
+
+/* ---------- Reduced motion: every animation collapses to a near-instant
+   crossfade. Covers hero video fade-ins, twinkle, bounce, ping, shimmer,
+   float, and all transition choreography. ---------- */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

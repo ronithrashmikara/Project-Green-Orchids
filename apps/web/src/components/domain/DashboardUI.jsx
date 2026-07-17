@@ -2,20 +2,29 @@
 
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { Icon, iconRegistry } from '@/lib/icons';
 
 /* ─────────────────────────────────────────────
    Tone palette — maps to Tailwind colour tokens
+   `icon`  → solid square (legacy / emphasis)
+   `tint`  → soft tinted square with coloured glyph (default for KPI tiles)
    ───────────────────────────────────────────── */
 const tones = {
-  emerald: { bg: 'bg-emerald-50',  icon: 'bg-emerald-500',  text: 'text-emerald-700',  border: 'border-emerald-100', badge: 'bg-emerald-500/10 text-emerald-700', heading: 'text-emerald-600' },
-  sky:     { bg: 'bg-sky-50',      icon: 'bg-sky-500',      text: 'text-sky-700',      border: 'border-sky-100',     badge: 'bg-sky-500/10 text-sky-700',         heading: 'text-sky-600' },
-  violet:  { bg: 'bg-violet-50',   icon: 'bg-violet-500',   text: 'text-violet-700',   border: 'border-violet-100',  badge: 'bg-violet-500/10 text-violet-700',   heading: 'text-violet-600' },
-  amber:   { bg: 'bg-amber-50',    icon: 'bg-amber-500',    text: 'text-amber-700',    border: 'border-amber-100',   badge: 'bg-amber-500/10 text-amber-700',     heading: 'text-amber-600' },
-  rose:    { bg: 'bg-rose-50',     icon: 'bg-rose-500',     text: 'text-rose-700',     border: 'border-rose-100',    badge: 'bg-rose-500/10 text-rose-700',       heading: 'text-rose-600' },
-  slate:   { bg: 'bg-slate-50',    icon: 'bg-slate-700',    text: 'text-slate-700',    border: 'border-slate-200',   badge: 'bg-slate-100 text-slate-700',        heading: 'text-slate-600' },
+  emerald: { bg: 'bg-emerald-50',  icon: 'bg-emerald-500',  tint: 'bg-emerald-50 text-emerald-600 ring-emerald-100', text: 'text-emerald-700',  border: 'border-emerald-100', badge: 'bg-emerald-500/10 text-emerald-700', heading: 'text-emerald-600' },
+  sky:     { bg: 'bg-sky-50',      icon: 'bg-sky-500',      tint: 'bg-sky-50 text-sky-600 ring-sky-100',             text: 'text-sky-700',      border: 'border-sky-100',     badge: 'bg-sky-500/10 text-sky-700',         heading: 'text-sky-600' },
+  violet:  { bg: 'bg-violet-50',   icon: 'bg-violet-500',   tint: 'bg-violet-50 text-violet-600 ring-violet-100',    text: 'text-violet-700',   border: 'border-violet-100',  badge: 'bg-violet-500/10 text-violet-700',   heading: 'text-violet-600' },
+  amber:   { bg: 'bg-amber-50',    icon: 'bg-amber-500',    tint: 'bg-amber-50 text-amber-600 ring-amber-100',       text: 'text-amber-700',    border: 'border-amber-100',   badge: 'bg-amber-500/10 text-amber-700',     heading: 'text-amber-600' },
+  rose:    { bg: 'bg-rose-50',     icon: 'bg-rose-500',     tint: 'bg-rose-50 text-rose-600 ring-rose-100',          text: 'text-rose-700',     border: 'border-rose-100',    badge: 'bg-rose-500/10 text-rose-700',       heading: 'text-rose-600' },
+  slate:   { bg: 'bg-slate-50',    icon: 'bg-slate-700',    tint: 'bg-slate-100 text-slate-600 ring-slate-200',      text: 'text-slate-700',    border: 'border-slate-200',   badge: 'bg-slate-100 text-slate-700',        heading: 'text-slate-600' },
 };
 
 function tone(t) { return tones[t] || tones.emerald; }
+
+/* Renders either a registry icon name ("orders", "invoices"…) or a raw node (emoji, JSX). */
+function renderIcon(icon, size = 18) {
+  if (typeof icon === 'string' && iconRegistry[icon]) return <Icon name={icon} size={size} />;
+  return icon;
+}
 
 /* ─────────────────────────────────────────────
    PageHeader / DashboardHero
@@ -41,7 +50,7 @@ export function DashboardHero({ eyebrow, title, description, actions, stats = []
           {stats.map((s) => (
             <div key={s.label} className={cn('flex items-center gap-2 rounded-full border px-3.5 py-1.5', c.border, c.bg)}>
               <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{s.label}</span>
-              <span className={cn('text-sm font-bold', c.text)}>{s.value}</span>
+              <span className={cn('text-sm font-bold tabular-nums', c.text)}>{s.value}</span>
             </div>
           ))}
         </div>
@@ -83,17 +92,17 @@ export function MetricCard({ label, value, detail, icon, tone: t = 'emerald', hr
   const c = tone(t);
   const inner = (
     <div className={cn(
-      'group flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow',
-      href && 'hover:shadow-md cursor-pointer',
+      'group flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all',
+      href && 'cursor-pointer hover:border-slate-300 hover:shadow-md',
     )}>
-      <div className="flex items-start justify-between">
-        <div className={cn('flex h-10 w-10 items-center justify-center rounded-xl text-lg text-white', c.icon)}>
-          {icon}
+      <div className="flex items-start justify-between gap-2">
+        <div className={cn('flex h-10 w-10 items-center justify-center rounded-xl text-lg ring-1 ring-inset', c.tint)}>
+          {renderIcon(icon)}
         </div>
-        {detail && <span className="text-[11px] font-medium text-slate-500">{detail}</span>}
+        {detail && <span className="text-right text-[11px] font-medium leading-tight text-slate-400">{detail}</span>}
       </div>
       <div>
-        <p className="text-2xl font-bold tabular-nums text-slate-900">{value}</p>
+        <p className="text-2xl font-bold tracking-tight tabular-nums text-slate-900">{value}</p>
         <p className="mt-0.5 text-[13px] font-medium text-slate-500">{label}</p>
       </div>
     </div>
@@ -131,14 +140,36 @@ export function ActionTile({ href, title, description, icon, tone: t = 'emerald'
       href={href}
       className="group flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 transition-all hover:border-slate-300 hover:shadow-sm"
     >
-      <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-base text-white', c.icon)}>
-        {icon}
+      <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-base ring-1 ring-inset', c.tint)}>
+        {renderIcon(icon, 16)}
       </div>
       <div className="min-w-0">
         <p className="text-[13px] font-semibold text-slate-800 group-hover:text-slate-900">{title}</p>
         {description && <p className="mt-0.5 text-[12px] leading-snug text-slate-500">{description}</p>}
       </div>
     </Link>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   EmptyState — friendly placeholder for empty lists/tables
+   ───────────────────────────────────────────── */
+export function EmptyState({ icon = 'info', title, description, action, tone: t = 'slate', className }) {
+  const c = tone(t);
+  return (
+    <div className={cn('flex flex-col items-center justify-center gap-2 py-10 text-center', className)}>
+      <div className={cn('flex h-11 w-11 items-center justify-center rounded-xl ring-1 ring-inset', c.tint)}>
+        {renderIcon(icon, 20)}
+      </div>
+      <p className="mt-1 text-[13px] font-semibold text-slate-700">{title}</p>
+      {description && <p className="max-w-xs text-[12px] leading-relaxed text-slate-500">{description}</p>}
+      {action && (
+        <Link href={action.href} className={cn('mt-1 inline-flex items-center gap-1 text-[13px] font-semibold hover:underline', c.heading)}>
+          {action.label}
+          <Icon name="arrowRight" size={14} />
+        </Link>
+      )}
+    </div>
   );
 }
 

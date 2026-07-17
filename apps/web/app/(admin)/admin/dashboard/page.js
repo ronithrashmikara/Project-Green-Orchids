@@ -3,18 +3,18 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import api from '@/lib/api';
-import { Spinner } from '@/components/ui/Spinner';
+import { DashboardSkeleton } from '@/components/ui/DashboardSkeleton';
 import { StatusBadge } from '@/components/domain/StatusBadge';
 import { formatLKR, formatDate } from '@/lib/utils';
-import { AlertRow, ActionTile, DashboardHero, GlassPanel, MetricCard, PrimaryAction } from '@/components/domain/DashboardUI';
+import { AlertRow, ActionTile, DashboardHero, EmptyState, GlassPanel, MetricCard, PrimaryAction } from '@/components/domain/DashboardUI';
 
 const quickLinks = [
-  { href: '/admin/buyers',   title: 'Buyer accounts',    description: 'Approve trade accounts and manage credit tiers.',    icon: '👥', tone: 'emerald' },
-  { href: '/admin/products', title: 'Product catalogue',  description: 'Update orchids, prices, stock and product images.',  icon: '🌿', tone: 'sky'     },
-  { href: '/admin/rfqs',     title: 'RFQ desk',           description: 'Quote submitted requests and convert accepted deals.',icon: '📋', tone: 'violet'  },
-  { href: '/admin/orders',   title: 'Orders',             description: 'View and manage all trade orders.',                  icon: '📦', tone: 'amber'   },
-  { href: '/admin/cms',      title: 'CMS',                description: 'Edit homepage content, branding and media.',         icon: '✏️', tone: 'rose'    },
-  { href: '/admin/users',    title: 'Staff accounts',     description: 'Manage staff logins and access roles.',              icon: '🔑', tone: 'slate'   },
+  { href: '/admin/buyers',   title: 'Buyer accounts',    description: 'Approve trade accounts and manage credit tiers.',    icon: 'buyers',   tone: 'emerald' },
+  { href: '/admin/products', title: 'Product catalogue',  description: 'Update orchids, prices, stock and product images.',  icon: 'orchid',   tone: 'sky'     },
+  { href: '/admin/rfqs',     title: 'RFQ desk',           description: 'Quote submitted requests and convert accepted deals.',icon: 'rfq',     tone: 'violet'  },
+  { href: '/admin/orders',   title: 'Orders',             description: 'View and manage all trade orders.',                  icon: 'orders',   tone: 'amber'   },
+  { href: '/admin/cms',      title: 'CMS',                description: 'Edit homepage content, branding and media.',         icon: 'edit',     tone: 'rose'    },
+  { href: '/admin/users',    title: 'Staff accounts',     description: 'Manage staff logins and access roles.',              icon: 'key',      tone: 'slate'   },
 ];
 
 export default function AdminDashboardPage() {
@@ -47,7 +47,7 @@ export default function AdminDashboardPage() {
     })();
   }, []);
 
-  if (loading) return <Spinner className="py-24" size="lg" />;
+  if (loading) return <DashboardSkeleton />;
 
   const inv = data.inventory || {};
   const buyers = Array.isArray(data.buyers) ? data.buyers : [];
@@ -77,10 +77,10 @@ export default function AdminDashboardPage() {
 
       {/* Metric row */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Total products"    value={inv.totalProducts || 0}    detail="Active SKUs"          icon="🌿" tone="emerald" href="/admin/products" />
-        <MetricCard label="Revenue (month)"   value={formatLKR(data.revenue)}   detail="Current month"        icon="💰" tone="sky"     href="/admin/reports"  />
-        <MetricCard label="Pending approvals" value={pending}                    detail="Awaiting review"      icon="👥" tone="amber"   href="/admin/buyers"   />
-        <MetricCard label="Active buyers"     value={active || buyers.length}   detail="Approved accounts"    icon="✅" tone="violet"  href="/admin/buyers"   />
+        <MetricCard label="Total products"    value={inv.totalProducts || 0}    detail="Active SKUs"          icon="products"    tone="emerald" href="/admin/products" />
+        <MetricCard label="Revenue (month)"   value={formatLKR(data.revenue)}   detail="Current month"        icon="revenue"     tone="sky"     href="/admin/reports"  />
+        <MetricCard label="Pending approvals" value={pending}                    detail="Awaiting review"      icon="buyers"      tone="amber"   href="/admin/buyers"   />
+        <MetricCard label="Active buyers"     value={active || buyers.length}   detail="Approved accounts"    icon="checkCircle" tone="violet"  href="/admin/buyers"   />
       </div>
 
       {/* Orders + RFQs */}
@@ -91,7 +91,12 @@ export default function AdminDashboardPage() {
           action={<Link href="/admin/orders" className="text-[12px] font-semibold text-emerald-600 hover:text-emerald-700">View all →</Link>}
         >
           {orders.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-500">No orders yet</p>
+            <EmptyState
+              icon="orders"
+              title="No orders yet"
+              description="New trade orders will appear here as buyers place them."
+              action={{ href: '/admin/orders', label: 'Go to orders' }}
+            />
           ) : (
             <div className="divide-y divide-slate-100">
               {orders.map((o) => (
@@ -124,7 +129,13 @@ export default function AdminDashboardPage() {
           action={<Link href="/admin/rfqs" className="text-[12px] font-semibold text-violet-600 hover:text-violet-700">View all →</Link>}
         >
           {rfqs.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-500">No RFQs yet</p>
+            <EmptyState
+              icon="rfq"
+              title="No RFQs yet"
+              description="Buyer quote requests will land here, ready for pricing."
+              action={{ href: '/admin/rfqs', label: 'Open RFQ desk' }}
+              tone="violet"
+            />
           ) : (
             <div className="divide-y divide-slate-100">
               {rfqs.map((r) => (

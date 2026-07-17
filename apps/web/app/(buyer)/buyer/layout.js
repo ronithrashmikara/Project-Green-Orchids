@@ -16,6 +16,7 @@ const navItems = [
   { href: '/buyer/orders', label: 'Orders', icon: '📦' },
   { href: '/buyer/invoices', label: 'Invoices', icon: '💰' },
   { href: '/buyer/returns', label: 'Returns', icon: '↩️' },
+  { href: '/buyer/complaints', label: 'Complaints', icon: '💬' },
   { href: '/buyer/account', label: 'Account', icon: '⚙️' },
 ];
 

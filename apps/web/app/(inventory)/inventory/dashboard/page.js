@@ -3,16 +3,16 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import api from '@/lib/api';
-import { Spinner } from '@/components/ui/Spinner';
+import { DashboardSkeleton } from '@/components/ui/DashboardSkeleton';
 import { StatusBadge } from '@/components/domain/StatusBadge';
 import { formatLKR } from '@/lib/utils';
-import { ActionTile, DashboardHero, GlassPanel, MetricCard, PrimaryAction, ProgressLine } from '@/components/domain/DashboardUI';
+import { ActionTile, DashboardHero, EmptyState, GlassPanel, MetricCard, PrimaryAction, ProgressLine } from '@/components/domain/DashboardUI';
 
 const quickActions = [
-  { href: '/inventory/products',  title: 'Products',        description: 'View stock levels for all SKUs.',        icon: '📦', tone: 'emerald' },
-  { href: '/inventory/alerts',    title: 'Stock alerts',    description: 'Review low and out-of-stock items.',     icon: '🔔', tone: 'rose'    },
-  { href: '/inventory/movements', title: 'Movements',       description: 'Audit all stock adjustments and flows.', icon: '🔄', tone: 'sky'     },
-  { href: '/admin/suppliers',     title: 'Suppliers',       description: 'Manage supplier accounts and lead times.',icon: '🏭', tone: 'amber'   },
+  { href: '/inventory/products',  title: 'Products',        description: 'View stock levels for all SKUs.',        icon: 'products',  tone: 'emerald' },
+  { href: '/inventory/alerts',    title: 'Stock alerts',    description: 'Review low and out-of-stock items.',     icon: 'alerts',    tone: 'rose'    },
+  { href: '/inventory/movements', title: 'Movements',       description: 'Audit all stock adjustments and flows.', icon: 'movements', tone: 'sky'     },
+  { href: '/admin/suppliers',     title: 'Suppliers',       description: 'Manage supplier accounts and lead times.',icon: 'suppliers', tone: 'amber'   },
 ];
 
 export default function InventoryDashboardPage() {
@@ -35,7 +35,7 @@ export default function InventoryDashboardPage() {
     })();
   }, []);
 
-  if (loading) return <Spinner className="py-24" size="lg" />;
+  if (loading) return <DashboardSkeleton />;
 
   const m = metrics;
   const healthPct = m.totalProducts > 0
@@ -62,10 +62,10 @@ export default function InventoryDashboardPage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Total SKUs"       value={m.totalProducts || 0}                    detail="Active products"         icon="📦" tone="emerald" href="/inventory/products" />
-        <MetricCard label="Stock value"      value={formatLKR(m.totalStockValue || 0)} detail="At cost price"      icon="💰" tone="sky"     />
-        <MetricCard label="Low stock items"  value={m.lowStockAlerts || m.lowStockCount || 0} detail="Below reorder level"   icon="⚠️" tone="amber"   href="/inventory/alerts"   />
-        <MetricCard label="Out of stock"     value={m.outOfStockCount || 0}                  detail="Zero available units"   icon="🚫" tone="rose"    href="/inventory/alerts"   />
+        <MetricCard label="Total SKUs"       value={m.totalProducts || 0}                    detail="Active products"         icon="products" tone="emerald" href="/inventory/products" />
+        <MetricCard label="Stock value"      value={formatLKR(m.totalStockValue || 0)} detail="At cost price"      icon="revenue"  tone="sky"     />
+        <MetricCard label="Low stock items"  value={m.lowStockAlerts || m.lowStockCount || 0} detail="Below reorder level"   icon="warning"  tone="amber"   href="/inventory/alerts"   />
+        <MetricCard label="Out of stock"     value={m.outOfStockCount || 0}                  detail="Zero available units"   icon="ban"      tone="rose"    href="/inventory/alerts"   />
       </div>
 
       {/* Stock health bar */}
@@ -88,7 +88,12 @@ export default function InventoryDashboardPage() {
           action={<Link href="/inventory/alerts" className="text-[12px] font-semibold text-amber-600 hover:text-amber-700">View all →</Link>}
         >
           {lowStock.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-500">All stock levels healthy ✓</p>
+            <EmptyState
+              icon="checkCircle"
+              title="All stock levels healthy"
+              description="Nothing is below its reorder level right now. Great work."
+              tone="emerald"
+            />
           ) : (
             <div className="divide-y divide-slate-100">
               {lowStock.slice(0, 6).map((item) => (
@@ -115,7 +120,13 @@ export default function InventoryDashboardPage() {
           action={<Link href="/inventory/movements" className="text-[12px] font-semibold text-sky-600 hover:text-sky-700">View all →</Link>}
         >
           {movements.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-500">No movements recorded yet</p>
+            <EmptyState
+              icon="movements"
+              title="No movements recorded yet"
+              description="Stock receipts, adjustments and order deductions will show up here."
+              action={{ href: '/inventory/movements', label: 'View movement log' }}
+              tone="sky"
+            />
           ) : (
             <div className="divide-y divide-slate-100">
               {movements.map((mv, i) => (

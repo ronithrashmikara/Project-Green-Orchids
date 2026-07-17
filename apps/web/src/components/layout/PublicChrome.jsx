@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { openCookiePreferences } from '@/lib/consent';
 
 const NAV = [
   { label: 'Catalogue', href: '/catalogue' },
@@ -12,6 +13,24 @@ const NAV = [
 export function PublicNav() {
   return (
     <header className="sticky top-0 z-30 flex justify-center px-4 pb-4 pt-6">
+      <a
+        href="#main-content"
+        onClick={(e) => {
+          // Pages wrap content in <main> without an id — focus it directly
+          // when the anchor target is missing so the skip link always works.
+          if (typeof document !== 'undefined' && !document.getElementById('main-content')) {
+            e.preventDefault();
+            const main = document.querySelector('main');
+            if (main) {
+              main.setAttribute('tabindex', '-1');
+              main.focus();
+            }
+          }
+        }}
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-white focus:px-4 focus:py-2.5 focus:text-sm focus:font-semibold focus:text-black focus:shadow-lg"
+      >
+        Skip to content
+      </a>
       <nav className="glass-nav flex items-center gap-1 rounded-full p-1.5 pl-5 text-sm text-white/90">
         <Link href="/" className="mr-3 font-serif-display text-lg leading-none text-white" aria-label="Orchids home">
           Orchids
@@ -58,7 +77,7 @@ export function PublicFooter() {
         {[
           { h: 'Shop', links: [['Catalogue', '/catalogue'], ['Pricing', '/pricing'], ['Request a quote', '/register']] },
           { h: 'Company', links: [['About', '/about'], ['Sign in', '/login'], ['Apply', '/register']] },
-          { h: 'Support', links: [['Contact', '/contact'], ['Trade terms', '/trade-terms'], ['Help centre', '/help-centre'], ['System status', '/status']] },
+          { h: 'Support', links: [['Contact', '/contact'], ['Trade terms', '/trade-terms'], ['Help centre', '/help-centre'], ['System status', '/status'], ['Cookie policy', '/cookies']] },
         ].map((col) => (
           <div key={col.h}>
             <p className="eyebrow text-emerald-300/80">{col.h}</p>
@@ -80,6 +99,14 @@ export function PublicFooter() {
         <span className="flex items-center gap-6">
           <Link href="/privacy" className="transition hover:text-white/70">Privacy</Link>
           <Link href="/terms" className="transition hover:text-white/70">Terms</Link>
+          <Link href="/cookies" className="transition hover:text-white/70">Cookies</Link>
+          <button
+            type="button"
+            onClick={openCookiePreferences}
+            className="transition hover:text-white/70"
+          >
+            Cookie settings
+          </button>
           <span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Trade desk open</span>
         </span>
       </div>

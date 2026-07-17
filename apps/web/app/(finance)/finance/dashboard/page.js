@@ -3,16 +3,16 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import api from '@/lib/api';
-import { Spinner } from '@/components/ui/Spinner';
+import { DashboardSkeleton } from '@/components/ui/DashboardSkeleton';
 import { StatusBadge } from '@/components/domain/StatusBadge';
 import { formatLKR, formatDate } from '@/lib/utils';
-import { ActionTile, DashboardHero, GlassPanel, MetricCard, PrimaryAction } from '@/components/domain/DashboardUI';
+import { ActionTile, DashboardHero, EmptyState, GlassPanel, MetricCard, PrimaryAction } from '@/components/domain/DashboardUI';
 
 const quickActions = [
-  { href: '/finance/invoices',   title: 'Invoices',        description: 'View and manage all buyer invoices.',   icon: '🧾', tone: 'sky'     },
-  { href: '/finance/payments',   title: 'Record payment',  description: 'Log an incoming buyer payment.',        icon: '💳', tone: 'emerald' },
-  { href: '/finance/aging',      title: 'Ageing report',   description: 'Review overdue and at-risk invoices.',  icon: '📊', tone: 'amber'   },
-  { href: '/finance/statements', title: 'Statements',      description: 'Generate buyer account statements.',    icon: '📄', tone: 'violet'  },
+  { href: '/finance/invoices',   title: 'Invoices',        description: 'View and manage all buyer invoices.',   icon: 'invoices',   tone: 'sky'     },
+  { href: '/finance/payments',   title: 'Record payment',  description: 'Log an incoming buyer payment.',        icon: 'payment',    tone: 'emerald' },
+  { href: '/finance/aging',      title: 'Ageing report',   description: 'Review overdue and at-risk invoices.',  icon: 'reports',    tone: 'amber'   },
+  { href: '/finance/statements', title: 'Statements',      description: 'Generate buyer account statements.',    icon: 'statements', tone: 'violet'  },
 ];
 
 export default function FinanceDashboardPage() {
@@ -38,7 +38,7 @@ export default function FinanceDashboardPage() {
     })();
   }, []);
 
-  if (loading) return <Spinner className="py-24" size="lg" />;
+  if (loading) return <DashboardSkeleton />;
 
   const s       = data.summary;
   const overdue = data.invoices.filter((i) => i.status === 'OVERDUE').length;
@@ -63,10 +63,10 @@ export default function FinanceDashboardPage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Revenue (month)"   value={formatLKR(s.revenueThisMonth || s.revenue || 0)} detail="Current month sales" icon="💰" tone="emerald" href="/finance/statements" />
-        <MetricCard label="Payments received" value={formatLKR(s.paymentsThisMonth || 0)}            detail="Month to date"        icon="💳" tone="sky"     href="/finance/payments"   />
-        <MetricCard label="Overdue invoices"  value={overdue}                                         detail="Past due date"        icon="⚠️" tone="rose"    href="/finance/aging"      />
-        <MetricCard label="Outstanding total" value={formatLKR(totalDue)}                            detail="All open balances"    icon="📊" tone="amber"   href="/finance/invoices"   />
+        <MetricCard label="Revenue (month)"   value={formatLKR(s.revenueThisMonth || s.revenue || 0)} detail="Current month sales" icon="revenue"   tone="emerald" href="/finance/statements" />
+        <MetricCard label="Payments received" value={formatLKR(s.paymentsThisMonth || 0)}            detail="Month to date"        icon="payment"   tone="sky"     href="/finance/payments"   />
+        <MetricCard label="Overdue invoices"  value={overdue}                                         detail="Past due date"        icon="warning"   tone="rose"    href="/finance/aging"      />
+        <MetricCard label="Outstanding total" value={formatLKR(totalDue)}                            detail="All open balances"    icon="analytics" tone="amber"   href="/finance/invoices"   />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
@@ -76,7 +76,13 @@ export default function FinanceDashboardPage() {
           action={<Link href="/finance/invoices" className="text-[12px] font-semibold text-sky-600 hover:text-sky-700">View all →</Link>}
         >
           {data.invoices.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-500">No open invoices</p>
+            <EmptyState
+              icon="invoices"
+              title="No open invoices"
+              description="You're all settled — new invoices will appear here as orders are billed."
+              action={{ href: '/finance/invoices', label: 'View all invoices' }}
+              tone="sky"
+            />
           ) : (
             <div className="divide-y divide-slate-100">
               {data.invoices.map((inv) => (
@@ -102,7 +108,13 @@ export default function FinanceDashboardPage() {
           action={<Link href="/finance/payments" className="text-[12px] font-semibold text-emerald-600 hover:text-emerald-700">View all →</Link>}
         >
           {data.payments.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-500">No payments recorded yet</p>
+            <EmptyState
+              icon="payments"
+              title="No payments recorded yet"
+              description="Log an incoming buyer payment to see it reflected here."
+              action={{ href: '/finance/payments', label: 'Record a payment' }}
+              tone="emerald"
+            />
           ) : (
             <div className="divide-y divide-slate-100">
               {data.payments.map((pay) => (

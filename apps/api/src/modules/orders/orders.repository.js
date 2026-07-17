@@ -95,6 +95,14 @@ const repo = {
     );
     return r.rows[0] || null;
   },
+  async claimForApproval(id, actor) {
+    const r = await query(
+      `UPDATE orders SET assigned_to = $1, updated_at = NOW()
+       WHERE id = $2 AND status = 'PENDING_APPROVAL' AND assigned_to IS NULL RETURNING *`,
+      [actor, id]
+    );
+    return r.rows[0] || null;
+  },
   async setRejected(client, id, reason) {
     await (client ? client.query.bind(client) : query)(
       `UPDATE orders SET status='REJECTED', rejection_reason=$1, updated_at=NOW() WHERE id=$2`,
