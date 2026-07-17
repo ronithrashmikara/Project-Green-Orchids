@@ -10,18 +10,18 @@ reviews:
   poem: false
   review_status: true
   path_filters:
-    - "apps/api/**"
+    - "apps/web/**"
   path_instructions:
-    - path: "apps/api/src/**"
+    - path: "apps/web/app/**"
       instructions: |
-        Perform a security-first backend audit. Check authentication and RBAC,
-        tenant/data isolation, input validation, SQL safety, transactionality,
-        race conditions, state transitions, error handling, sensitive logging,
-        and missing negative-path tests. Report only concrete, actionable issues.
-    - path: "apps/api/migrations/**"
+        Audit routing, server/client boundaries, authorization assumptions, data
+        fetching, error/loading states, accessibility, responsive behavior,
+        privacy, performance, and failure handling. Report concrete issues only.
+    - path: "apps/web/src/**"
       instructions: |
-        Check migration ordering, reversibility, constraints, indexes, defaults,
-        data backfills, referential integrity, and compatibility with application code.
+        Check API-client safety, authentication and RBAC helpers, state management,
+        cookie consent, component accessibility, stale-state races, unsafe rendering,
+        and missing tests. Include exact file and line evidence for each finding.
   auto_review:
     enabled: true
     drafts: true
