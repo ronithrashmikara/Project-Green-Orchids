@@ -21,11 +21,8 @@ function requirePermission(...codes) {
   };
 }
 
-/**
- * Require one of the given roles
- */
-function requireRole(...roleNames) {
-  return async (req, res, next) => {
+function requireAllPermissions(...codes) {
+  return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
@@ -33,19 +30,30 @@ function requireRole(...roleNames) {
       });
     }
 
-    const { query } = require('../config/db');
-    const result = await query(
-      `SELECT name FROM roles WHERE id = $1`,
-      [req.user.roleId]
-    );
-    if (!result.rows.length) {
+    const missing = codes.filter(code => !req.user.permissions.includes(code));
+    if (missing.length) {
       return res.status(403).json({
         success: false,
-        error: { code: 'FORBIDDEN', message: 'Role not found' },
+        error: { code: 'FORBIDDEN', message: `Missing required permission: ${missing.join(' and ')}` },
+      });
+    }
+    next();
+  };
+}
+
+/**
+ * Require one of the given roles
+ */
+function requireRole(...roleNames) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
       });
     }
 
-    if (!roleNames.includes(result.rows[0].name)) {
+    if (!roleNames.includes(req.user.roleName)) {
       return res.status(403).json({
         success: false,
         error: { code: 'FORBIDDEN', message: 'Insufficient role' },
@@ -55,4 +63,4 @@ function requireRole(...roleNames) {
   };
 }
 
-module.exports = { requirePermission, requireRole };
+module.exports = { requirePermission, requireAllPermissions, requireRole };

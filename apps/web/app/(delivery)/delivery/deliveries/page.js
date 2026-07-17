@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -37,7 +36,6 @@ export default function DeliveryDeliveriesPage() {
   const [status, setStatus] = useState(searchParams.get('status') || '');
   const [confirm, setConfirm] = useState({ open: false, delivery: null });
   const [podFile, setPodFile] = useState(null);
-  const [podPreview, setPodPreview] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   const fetchDeliveries = useCallback(async () => {
@@ -60,14 +58,12 @@ export default function DeliveryDeliveriesPage() {
 
   const openConfirm = (d) => {
     setPodFile(null);
-    setPodPreview(null);
     setConfirm({ open: true, delivery: d });
   };
 
   const handlePodFileChange = (e) => {
     const file = e.target.files?.[0];
     setPodFile(file || null);
-    setPodPreview(file ? URL.createObjectURL(file) : null);
   };
 
   const handleAdvance = async () => {
@@ -167,11 +163,9 @@ export default function DeliveryDeliveriesPage() {
             <h3 className="text-base font-semibold text-slate-800">Mark as delivered</h3>
             <p className="mt-1 text-sm text-slate-500">Delivery #{String(confirm.delivery.id).padStart(5, '0')} · attach a proof-of-delivery photo</p>
             <label className="mt-4 flex aspect-video cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 transition hover:border-emerald-400">
-              {podPreview ? (
-                <img src={podPreview} alt="Proof of delivery preview" className="h-full w-full object-cover" />
-              ) : (
-                <span className="text-sm text-slate-400">📷 Click to take/upload a photo</span>
-              )}
+              <span className="px-4 text-center text-sm text-slate-500">
+                {podFile ? `Selected: ${podFile.name}` : '📷 Click to take/upload a photo'}
+              </span>
               <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePodFileChange} />
             </label>
             <div className="mt-6 flex justify-end gap-3">

@@ -1,4 +1,3 @@
-const crypto = require('crypto');
 const env = require('./env');
 
 /**
@@ -13,23 +12,6 @@ function getConfig() {
     apiSecret: env.CLOUDINARY_API_SECRET,
     url: env.CLOUDINARY_URL,
   };
-}
-
-/**
- * Generate a signed URL for authenticated resource access
- */
-function generateSignedUrl(publicId, options = {}) {
-  const config = getConfig();
-  if (!config.apiSecret) {
-    return `https://res.cloudinary.com/${config.cloudName || 'demo'}/image/upload/${publicId}`;
-  }
-
-  const timestamp = Math.round(Date.now() / 1000);
-  const transformation = options.transformation || '';
-  const toSign = `upload/${publicId}${timestamp}${config.apiSecret}`;
-  const signature = crypto.createHash('sha1').update(toSign).digest('hex');
-
-  return `https://res.cloudinary.com/${config.cloudName}/image/upload/${signature}/${publicId}`;
 }
 
 /**
@@ -49,4 +31,4 @@ function imageUrl(publicId, options = {}) {
   return `https://res.cloudinary.com/${cloud}/image/upload/${path}`;
 }
 
-module.exports = { getConfig, generateSignedUrl, imageUrl };
+module.exports = { getConfig, imageUrl };

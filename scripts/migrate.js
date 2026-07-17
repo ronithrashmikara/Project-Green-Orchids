@@ -22,6 +22,9 @@ async function main() {
 
   // Ensure the target database exists
   const dbName = new URL(DATABASE_URL).pathname.replace(/^\//, '') || 'project_green';
+  if (!/^[A-Za-z_][A-Za-z0-9_]{0,62}$/.test(dbName)) {
+    throw new Error('Invalid PostgreSQL database name');
+  }
   const adminPool = new Pool({
     connectionString: DATABASE_URL.replace(/\/[^/]+$/, '/postgres'),
   });
@@ -30,6 +33,8 @@ async function main() {
       `SELECT 1 FROM pg_database WHERE datname = $1`, [dbName]
     );
     if (rows.length === 0) {
+      // PostgreSQL does not parameterize identifiers. dbName is constrained above to
+      // a strict identifier grammar before it is quoted here.
       await adminPool.query(`CREATE DATABASE "${dbName}"`);
       console.log(`✅ Created database "${dbName}"`);
     }
@@ -50,7 +55,7 @@ async function main() {
   const applied = new Set(appliedRows.map(r => r.filename));
 
   const files = fs.readdirSync(MIGRATIONS_DIR)
-    .filter(f => f.endsWith('.sql'))
+    .filter(f => /^\d{4}_[A-Za-z0-9_-]+\.sql$/.test(f))
     .sort();
 
   if (files.length === 0) {
@@ -69,12 +74,32 @@ async function main() {
   console.log(`📦 Running ${pending.length} pending migration(s) of ${files.length} total against ${dbName}...\n`);
 
   for (const file of pending) {
-    const filePath = path.join(MIGRATIONS_DIR, file);
+    const filePath = path.resolve(MIGRATIONS_DIR, file);
+    if (!filePath.startsWith(`${MIGRATIONS_DIR}${path.sep}`)) {
+      throw new Error('Migration path escapes the configured directory');
+    }
     const sql = fs.readFileSync(filePath, 'utf8');
     console.log(`▶  ${file}`);
     try {
-      await pool.query(sql);
-      await pool.query('INSERT INTO schema_migrations (filename) VALUES ($1)', [file]);
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query('SELECT pg_advisory_xact_lock($1)', [742901]);
+        const alreadyApplied = await client.query('SELECT 1 FROM schema_migrations WHERE filename = $1', [file]);
+        if (alreadyApplied.rows.length) {
+          await client.query('COMMIT');
+          console.log('   ↪ already applied by another migration runner');
+          continue;
+        }
+        await client.query(sql);
+        await client.query('INSERT INTO schema_migrations (filename) VALUES ($1) ON CONFLICT DO NOTHING', [file]);
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
       console.log(`   ✅ OK`);
     } catch (err) {
       console.error(`   ❌ FAILED: ${err.message}`);

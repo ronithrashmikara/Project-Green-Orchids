@@ -6,7 +6,7 @@ import { setAccessToken, clearAccessToken, getAccessToken } from './api';
 
 const AuthContext = createContext(null);
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const SAME_ORIGIN_HEADERS = { 'X-Requested-With': 'XMLHttpRequest' };
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -15,7 +15,10 @@ export function AuthProvider({ children }) {
 
   const refreshSession = useCallback(async () => {
     try {
-      const res = await axios.post(`${API_URL}/auth/refresh`, {}, { withCredentials: true });
+      const res = await axios.post('/api/auth/refresh', {}, {
+        withCredentials: true,
+        headers: SAME_ORIGIN_HEADERS,
+      });
       const { accessToken, user: userData } = res.data;
       setAccessToken(accessToken);
       setUser(userData);
@@ -43,9 +46,9 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (email, password) => {
     const res = await axios.post(
-      `${API_URL}/auth/login`,
+      '/api/auth/login',
       { email, password },
-      { withCredentials: true }
+      { withCredentials: true, headers: SAME_ORIGIN_HEADERS }
     );
     const { accessToken, user: userData } = res.data;
     setAccessToken(accessToken);
@@ -56,7 +59,10 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(async () => {
     try {
-      await axios.post(`${API_URL}/auth/logout`, {}, { withCredentials: true });
+      await axios.post('/api/auth/logout', {}, {
+        withCredentials: true,
+        headers: SAME_ORIGIN_HEADERS,
+      });
     } catch {
       // Ignore
     }

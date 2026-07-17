@@ -25,9 +25,21 @@ export default function StatusPage() {
 
   const check = useCallback(async () => {
     try {
-      const res = await fetch('/api/status', { cache: 'no-store' });
+      const startedAt = Date.now();
+      const res = await fetch('/api/healthz', { cache: 'no-store' });
       if (!res.ok) throw new Error('bad response');
-      setData(await res.json());
+      const health = await res.json();
+      const latencyMs = Date.now() - startedAt;
+      const healthy = health?.status === 'healthy';
+      setData({
+        overall: healthy ? 'operational' : 'major_outage',
+        checkedAt: health?.timestamp || new Date().toISOString(),
+        components: [
+          { key: 'web', name: 'Web application', status: 'operational', latencyMs: 0 },
+          { key: 'api', name: 'API server', status: healthy ? 'operational' : 'major_outage', latencyMs },
+          { key: 'database', name: 'Database', status: healthy ? 'operational' : 'major_outage', latencyMs },
+        ],
+      });
       setError(false);
     } catch {
       setError(true);

@@ -124,17 +124,38 @@ const service = {
     const merchantId = env.PAYHERE_MERCHANT_ID;
     const secret = env.PAYHERE_SECRET;
 
-    // Verify md5sig (F1.1) — reject silently on bad signature
-    if (merchantId && secret) {
-      const hash = crypto.createHash('md5').update(
-        `${merchantId}${data.order_id}${data.payhere_amount}${data.payhere_currency}${data.status_code}` +
-        crypto.createHash('md5').update(secret).digest('hex').toUpperCase()
-      ).digest('hex').toUpperCase();
-      if (hash !== data.md5sig) {
-        await writeAudit({ actor: null, action: 'PAYHERE_BAD_SIG', entityType: 'payments', entityId: String(data.order_id || ''),
-          after: { order_id: data.order_id } }).catch(() => {});
-        return { ok: true, ignored: true };
-      }
+    // PayHere mandates this MD5 checksum format. Treat it strictly as a protocol MAC,
+    // fail closed when configuration or required fields are absent, and compare in
+    // constant time. It is never used for password hashing or local data integrity.
+    if (!merchantId || !secret) {
+      throw new AppError('PAYHERE_NOT_CONFIGURED', 'Payment notifications are not configured', 503);
+    }
+    const required = ['merchant_id', 'order_id', 'payment_id', 'payhere_amount', 'payhere_currency', 'status_code', 'md5sig'];
+    if (required.some(field => typeof data[field] !== 'string' || !data[field].trim())) {
+      throw new AppError('INVALID_NOTIFICATION', 'Malformed payment notification', 400);
+    }
+    if (data.merchant_id !== merchantId || !/^[-+]?\d+$/.test(data.status_code)) {
+      throw new AppError('INVALID_NOTIFICATION', 'Invalid payment notification', 400);
+    }
+    const amount = Number(data.payhere_amount);
+    if (!Number.isFinite(amount) || amount <= 0 || !/^\d+(?:\.\d{1,2})?$/.test(data.payhere_amount)) {
+      throw new AppError('INVALID_AMOUNT', 'Invalid payment amount', 400);
+    }
+
+    const hash = crypto.createHash('md5').update(
+      `${merchantId}${data.order_id}${data.payhere_amount}${data.payhere_currency}${data.status_code}` +
+      crypto.createHash('md5').update(secret).digest('hex').toUpperCase()
+    ).digest('hex').toUpperCase();
+    const provided = data.md5sig.toUpperCase();
+    const validSignature = /^[A-F0-9]{32}$/.test(provided) &&
+      crypto.timingSafeEqual(Buffer.from(hash, 'ascii'), Buffer.from(provided, 'ascii'));
+    if (!validSignature) {
+      await writeAudit({ actor: null, action: 'PAYHERE_BAD_SIG', entityType: 'payments', entityId: String(data.order_id),
+        after: { order_id: data.order_id } }).catch(() => {});
+      return { ok: true, ignored: true };
+    }
+    if (data.status_code !== '2') {
+      return { ok: true, ignored: true };
     }
 
     // Resolve OUR invoice from the PayHere order reference (Finding 13) — never assume equality
@@ -148,7 +169,7 @@ const service = {
     try {
       return await this.create({
         invoice_id: invoice.id,
-        amount: parseFloat(data.payhere_amount),
+        amount,
         method: 'ONLINE', // 'PAYHERE' is not an allowed CHECK value (Finding 5)
         reference: data.payment_id,
       }, 'SYSTEM');

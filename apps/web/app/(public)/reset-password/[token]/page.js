@@ -3,10 +3,8 @@
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import axios from 'axios';
+import api from '@/lib/api';
 import { AuthBackdrop, AuthCard, AuthInput, AuthButton, IconTile } from '@/components/auth/AuthUI';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 export default function ResetPasswordPage() {
   const { token } = useParams();
@@ -25,7 +23,7 @@ export default function ResetPasswordPage() {
     setLoading(true);
     setError('');
     try {
-      await axios.post(`${API_URL}/auth/reset-password/${token}`, { password });
+      await api.post(`/auth/reset-password/${encodeURIComponent(token)}`, { password });
       setSuccess(true);
     } catch (err) {
       setError(err.response?.data?.error?.message || err.response?.data?.message || 'Reset failed. The link may have expired.');

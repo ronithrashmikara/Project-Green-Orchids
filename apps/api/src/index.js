@@ -9,7 +9,8 @@ const cookieParser = require('cookie-parser');
 const requestId = require('./middleware/request_id');
 const { globalLimiter } = require('./middleware/rateLimit');
 const { auditMiddleware } = require('./middleware/audit');
-const { errorHandler, notFoundHandler, setupGlobalHandlers } = require('./middleware/errors');
+const { csrfProtection } = require('./middleware/csrf');
+const { AppError, errorHandler, notFoundHandler, setupGlobalHandlers } = require('./middleware/errors');
 const { registerJobs } = require('./jobs');
 const { UPLOADS_ROOT } = require('./middleware/upload');
 
@@ -26,38 +27,49 @@ app.set('trust proxy', 1);
 
 // ── Middleware Chain ──
 app.use(helmet());
+const corsOrigins = new Set(String(env.CORS_ORIGIN).split(',').map(value => new URL(value.trim()).origin));
 app.use(cors({
-  origin: env.CORS_ORIGIN,
+  origin(origin, callback) {
+    if (!origin || corsOrigins.has(origin)) return callback(null, true);
+    return callback(new AppError('CORS_ORIGIN_REJECTED', 'Origin is not allowed', 403));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id', 'X-Requested-With'],
 }));
-app.use(cookieParser());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
 app.use(requestId);
 app.use(globalLimiter);
+app.use(cookieParser());
+app.use(csrfProtection);
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
 app.use(auditMiddleware);
 
 // ── Health Check ──
-app.get('/healthz', async (_req, res) => {
+const healthz = async (_req, res) => {
   try {
     const { pool } = require('./config/db');
     await pool.query('SELECT 1');
     res.json({ status: 'healthy', timestamp: new Date().toISOString(), uptime: process.uptime() });
   } catch (err) {
-    res.status(503).json({ status: 'unhealthy', error: err.message });
+    console.error('Health check failed:', err.message);
+    res.status(503).json({ status: 'unhealthy' });
   }
-});
+};
+app.get('/healthz', healthz);
 
 // ── Uploaded file serving (POD photos, etc.) ──
-app.use('/uploads', (req, res, next) => {
+const publicUploads = (req, res, next) => {
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
-}, express.static(UPLOADS_ROOT));
+};
+for (const subdir of ['avatars', 'cms', 'products']) {
+  app.use(`/uploads/${subdir}`, publicUploads, express.static(require('path').join(UPLOADS_ROOT, subdir)));
+}
 
 // ── API Routes ──
 const api = express.Router();
+api.get('/healthz', healthz);
 
 // Compatibility routes for the shipped Next.js client. These are mounted first
 // so specific paths such as /products/catalogue do not get swallowed by

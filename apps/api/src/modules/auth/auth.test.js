@@ -25,6 +25,19 @@ test('wrong password and unknown email both return a generic invalid-credentials
   assert.equal(noSuchUser.data.error.code, 'INVALID_CREDENTIALS');
 });
 
+test('mutation requests reject missing CSRF headers and untrusted browser origins', async () => {
+  const missingHeader = await req(ctx.baseUrl, 'POST', '/auth/login', { body: CREDS.admin, csrf: false });
+  assert.equal(missingHeader.status, 403);
+  assert.equal(missingHeader.data.error.code, 'CSRF_REJECTED');
+
+  const badOrigin = await req(ctx.baseUrl, 'POST', '/auth/login', {
+    body: CREDS.admin,
+    origin: 'https://attacker.example',
+  });
+  assert.equal(badOrigin.status, 403);
+  assert.equal(badOrigin.data.error.code, 'CORS_ORIGIN_REJECTED');
+});
+
 test('a request with no token is rejected, and a buyer token cannot reach admin-only routes', async () => {
   const noToken = await req(ctx.baseUrl, 'GET', '/orders');
   assert.equal(noToken.status, 401);

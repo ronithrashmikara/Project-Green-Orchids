@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const { AppError } = require('./errors');
 
 const UPLOADS_ROOT = path.resolve(__dirname, '..', '..', 'uploads');
+const ALLOWED_SUBDIRECTORIES = new Set(['avatars', 'cms', 'pod', 'products']);
 
 // Only these image types are ever accepted anywhere in the app (products, CMS media, POD
 // photos). MIME type alone is client-supplied and trivially spoofed (Finding 007 — a
@@ -40,7 +41,13 @@ function matchesSignature(buffer, ext) {
 }
 
 function makeUploader(subdir) {
-  const dest = path.join(UPLOADS_ROOT, subdir);
+  if (!ALLOWED_SUBDIRECTORIES.has(subdir)) {
+    throw new Error(`Unsupported upload directory: ${subdir}`);
+  }
+  const dest = path.resolve(UPLOADS_ROOT, subdir);
+  if (!dest.startsWith(`${UPLOADS_ROOT}${path.sep}`)) {
+    throw new Error('Upload directory escapes the configured root');
+  }
   fs.mkdirSync(dest, { recursive: true });
   const storage = multer.diskStorage({
     destination: (_req, _file, cb) => cb(null, dest),

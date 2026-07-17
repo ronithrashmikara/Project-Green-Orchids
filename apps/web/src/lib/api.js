@@ -24,7 +24,9 @@ export function clearAccessToken() {
 }
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000',
+  // Keep browser API traffic same-origin. Deployment environment values must
+  // never become arbitrary browser request origins.
+  baseURL: '/api',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
@@ -76,9 +78,9 @@ api.interceptors.response.use(
 
       try {
         const response = await axios.post(
-          `${api.defaults.baseURL}/auth/refresh`,
+          '/api/auth/refresh',
           {},
-          { withCredentials: true }
+          { withCredentials: true, headers: { 'X-Requested-With': 'XMLHttpRequest' } }
         );
         const newToken = response.data.accessToken;
         accessToken = newToken;

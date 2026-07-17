@@ -2,12 +2,10 @@
 
 import { Suspense, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import axios from 'axios';
+import api from '@/lib/api';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { AuthBackdrop, AuthCard, AuthInput, AuthButton, IconTile } from '@/components/auth/AuthUI';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export default function VerifyEmailPage() {
   return (
@@ -30,7 +28,7 @@ function VerifyEmailForm() {
     e.preventDefault();
     setLoading(true);
     try {
-      await axios.post(`${API_URL}/auth/verify-email`, { email, code });
+      await api.post('/auth/verify-email', { email, code });
       setSuccess(true);
     } catch (err) {
       toast.error(err.response?.data?.error?.message || 'Invalid or expired code');
@@ -43,7 +41,7 @@ function VerifyEmailForm() {
     if (!email) return toast.error('Enter your email first');
     setResending(true);
     try {
-      await axios.post(`${API_URL}/auth/verify-email/resend`, { email });
+      await api.post('/auth/verify-email/resend', { email });
       toast.success('A new code has been sent');
     } catch {
       toast.success('A new code has been sent'); // don't reveal account existence

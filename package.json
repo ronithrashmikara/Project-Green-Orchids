@@ -9,6 +9,11 @@
     "apps/*",
     "packages/*"
   ],
+  "overrides": {
+    "postcss": "$postcss",
+    "react": "$react",
+    "react-dom": "$react-dom"
+  },
   "scripts": {
     "dev:api": "cd apps/api && npm run dev",
     "dev:web": "cd apps/web && npm run dev",
@@ -21,6 +26,11 @@
   "dependencies": {
     "date-fns": "^2.30.0",
     "pdf-lib": "^1.17.1",
-    "puppeteer-core": "^25.1.0"
+    "puppeteer-core": "^25.1.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "devDependencies": {
+    "postcss": "^8.5.15"
   }
 }

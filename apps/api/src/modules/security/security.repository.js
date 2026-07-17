@@ -88,9 +88,7 @@ const repo = {
 
   async getSettings(keys) {
     const r = await query(`SELECT key, value FROM settings WHERE key = ANY($1)`, [keys]);
-    const map = {};
-    for (const row of r.rows) map[row.key] = row.value;
-    return map;
+    return new Map(r.rows.map(row => [row.key, row.value]));
   },
 
   async setSetting(key, value) {

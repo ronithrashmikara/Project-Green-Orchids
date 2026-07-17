@@ -171,96 +171,26 @@ function catalogueImageUrl(productId, productName, catName) {
 // Clear existing data
 // ---------------------------------------------------------------------------
 async function clearData(pool) {
-  // categories has self-referencing FK; null children first
-  await pool.query('UPDATE categories SET parent_id = NULL');
+  // A static allowlist avoids identifier injection. TRUNCATE is intentional here:
+  // this script is gated to disposable test DBs or explicit local resets below.
+  await pool.query(`TRUNCATE TABLE
+    complaint_messages, complaints, staff_availability, delivery_events, deliveries,
+    rma_items, invoice_adjustments, rma_requests, payments, invoices, stock_movements,
+    order_items, orders, cart_items, carts, rfq_items, rfqs, price_change_requests,
+    price_history, bulk_pricing_tiers, product_images, stock_alerts, bloom_events,
+    products, categories, suppliers, trade_accounts, auth_sessions, email_tokens,
+    login_history, cms_blocks, cms_media, users, role_access_windows, role_permissions,
+    permissions, roles, notifications_outbox, audit_logs, settings, buyer_tiers
+    RESTART IDENTITY CASCADE`);
+}
 
-  // The audit/ledger tables are append-only at runtime. Seeding is the one
-  // controlled reset path, so temporarily disable only user-defined triggers.
-  const appendOnlyTables = ['audit_logs', 'stock_movements', 'price_history'];
-  for (const table of appendOnlyTables) {
-    await pool.query(`ALTER TABLE ${table} DISABLE TRIGGER USER`);
-  }
-
-  // Delete in reverse dependency order (children before parents)
-  const tables = [
-    'complaint_messages',
-    'complaints',
-    'staff_availability',
-    'delivery_events',
-    'deliveries',
-    'rma_items',
-    'invoice_adjustments',
-    'rma_requests',
-    'payments',
-    'invoices',
-    'stock_movements',
-    'order_items',
-    'orders',
-    'cart_items',
-    'carts',
-    'rfq_items',
-    'rfqs',
-    'price_change_requests',
-    'price_history',
-    'bulk_pricing_tiers',
-    'product_images',
-    'stock_alerts',
-    'bloom_events',
-    'products',
-    'categories',
-    'suppliers',
-    'trade_accounts',
-    'auth_sessions',
-    'email_tokens',
-    'login_history',
-    'cms_blocks',
-    'cms_media',
-    'users',
-    'role_access_windows',
-    'role_permissions',
-    'permissions',
-    'roles',
-    'notifications_outbox',
-    'audit_logs',
-    'settings',
-    'buyer_tiers',
-  ];
-
-  try {
-    for (const table of tables) {
-      try {
-        await pool.query(`DELETE FROM ${table}`);
-      } catch (err) {
-        // 42P01 = undefined_table: tolerate tables from migrations not yet applied
-        // (e.g. complaints/staff_availability from 0016 on an older database).
-        if (err.code !== '42P01') throw err;
-      }
-    }
-
-    // Reset sequences
-    const sequences = [
-      'roles_id_seq', 'permissions_id_seq',
-      'categories_id_seq', 'suppliers_id_seq',
-      'products_id_seq', 'product_images_id_seq',
-      'bulk_pricing_tiers_id_seq',
-      'orders_id_seq', 'order_items_id_seq',
-      'invoices_id_seq', 'payments_id_seq',
-      'invoice_adjustments_id_seq',
-      'rma_requests_id_seq', 'rma_items_id_seq',
-      'deliveries_id_seq', 'delivery_events_id_seq',
-      'stock_alerts_id_seq',
-      'price_change_requests_id_seq',
-      'complaints_id_seq', 'complaint_messages_id_seq',
-    ];
-    for (const seq of sequences) {
-      try {
-        await pool.query(`ALTER SEQUENCE IF EXISTS ${seq} RESTART WITH 1`);
-      } catch (_) { /* may not exist yet */ }
-    }
-  } finally {
-    for (const table of appendOnlyTables) {
-      await pool.query(`ALTER TABLE ${table} ENABLE TRIGGER USER`);
-    }
+function assertSafeResetTarget() {
+  const url = new URL(DATABASE_URL);
+  const dbName = decodeURIComponent(url.pathname.replace(/^\//, ''));
+  const isLocal = ['localhost', '127.0.0.1', '::1'].includes(url.hostname);
+  const isTestDb = dbName.endsWith('_test');
+  if (process.env.NODE_ENV === 'production' || (!isTestDb && !(isLocal && process.env.ALLOW_DATABASE_RESET === 'true'))) {
+    throw new Error('Refusing destructive seed: use a *_test database or set ALLOW_DATABASE_RESET=true for a local database');
   }
 }
 
@@ -268,6 +198,7 @@ async function clearData(pool) {
 // Main seed
 // ---------------------------------------------------------------------------
 async function seed() {
+  assertSafeResetTarget();
   const pool = new Pool({ connectionString: DATABASE_URL });
 
   try {
@@ -284,9 +215,8 @@ async function seed() {
         ('PLATINUM',7.00, 90000000.00, 3)
       RETURNING id, name, discount_rate, credit_cap
     `);
-    const tiers = {};
-    for (const t of tierRes.rows) tiers[t.name] = t;
-    console.log(`   → ${Object.keys(tiers).join(', ')}`);
+    const tiers = new Map(tierRes.rows.map(t => [t.name, t]));
+    console.log(`   → ${[...tiers.keys()].join(', ')}`);
 
     // ---- 2. Roles & permissions ----
     console.log('🛡️  Seeding roles & permissions…');
@@ -302,9 +232,8 @@ async function seed() {
     await pool.query(sql0016);
 
     const { rows: rolesList } = await pool.query('SELECT id, name FROM roles');
-    const roleMap = {};
-    for (const r of rolesList) roleMap[r.name] = r.id;
-    console.log(`   → ${Object.keys(roleMap).join(', ')}`);
+    const roleMap = new Map(rolesList.map(r => [r.name, r.id]));
+    console.log(`   → ${[...roleMap.keys()].join(', ')}`);
 
     // ---- 3. Staff users ----
     console.log('👤 Seeding staff users…');
@@ -316,15 +245,15 @@ async function seed() {
       { email: 'delivery@example.invalid',       name: 'Delivery Staff',      role: 'DELIVERY_COORDINATOR' },
     ];
 
-    const staffUsers = {};
+    const staffUsers = new Map();
     for (const s of staffDefs) {
       const { rows: [u] } = await pool.query(`
         INSERT INTO users (email, password_hash, full_name, role_id, status, email_verified_at)
         VALUES ($1, $2, $3, $4, 'ACTIVE', NOW())
         ON CONFLICT (email) DO UPDATE SET full_name = EXCLUDED.full_name
         RETURNING id, email
-      `, [s.email, STAFF_PASSWORD_HASH, s.name, roleMap[s.role]]);
-      staffUsers[s.role] = u;
+      `, [s.email, STAFF_PASSWORD_HASH, s.name, roleMap.get(s.role)]);
+      staffUsers.set(s.role, u);
     }
 
     // Sales managers (two of them, so availability-based assignment is observable):
@@ -340,7 +269,7 @@ async function seed() {
         VALUES ($1, $2, $3, $4, 'ACTIVE', NOW())
         ON CONFLICT (email) DO UPDATE SET full_name = EXCLUDED.full_name
         RETURNING id, email
-      `, [s.email, STAFF_PASSWORD_HASH, s.name, roleMap['SALES_MANAGER']]);
+      `, [s.email, STAFF_PASSWORD_HASH, s.name, roleMap.get('SALES_MANAGER')]);
       await pool.query(`
         INSERT INTO staff_availability (user_id, status, updated_at)
         VALUES ($1, $2, NOW())
@@ -365,30 +294,25 @@ async function seed() {
 
     // ---- 5. Categories ----
     console.log('📁 Seeding categories…');
-    const categoryIds = {}; // name → id
+    const categoryIds = new Map(); // name → id
     for (const [parent, children] of Object.entries(CATEGORY_TREE)) {
       const { rows: [p] } = await pool.query(`
         INSERT INTO categories (name, type) VALUES ($1, 'PRODUCT') RETURNING id
       `, [parent]);
-      categoryIds[parent] = p.id;
+      categoryIds.set(parent, p.id);
       for (const child of children) {
         const { rows: [c] } = await pool.query(`
           INSERT INTO categories (name, parent_id, type) VALUES ($1, $2, 'PRODUCT') RETURNING id
         `, [child, p.id]);
-        categoryIds[child] = c.id;
+        categoryIds.set(child, c.id);
       }
     }
-    console.log(`   → ${Object.keys(categoryIds).length} categories`);
-
-    // Build list of leaf category IDs for random assignment
-    const leafCategories = Object.keys(categoryIds).filter(
-      k => CATEGORY_TREE[k] === undefined || CATEGORY_TREE[k] === undefined
-    );
+    console.log(`   → ${categoryIds.size} categories`);
     // Actually, all entries in CATEGORY_TREE children are leaf categories.
     let allLeafIds = [];
     for (const children of Object.values(CATEGORY_TREE)) {
       for (const child of children) {
-        allLeafIds.push(categoryIds[child]);
+        allLeafIds.push(categoryIds.get(child));
       }
     }
 
@@ -409,7 +333,7 @@ async function seed() {
 
     // 6a. Real orchid products (30)
     const realProductIds = [];
-    const productMeta = {}; // pid -> { name, catName }
+    const productMeta = new Map(); // pid -> { name, catName }
     for (let i = 0; i < REAL_ORCHIDS.length; i++) {
       const orchid = REAL_ORCHIDS[i];
       const sku = `KOR-${String(i + 1).padStart(4, '0')}`;
@@ -429,7 +353,7 @@ async function seed() {
         'Zygopetalum': 'Other Orchids',
         'Masdevallia': 'Other Orchids',
       };
-      const catId = categoryIds[catMap[catName] || 'Other Orchids'];
+      const catId = categoryIds.get(catMap[catName] || 'Other Orchids');
       const basePrice = randomInt(500, 25000);
       const moq = randomInt(1, 5);
       const stockQty = randomInt(10, 500);
@@ -446,7 +370,7 @@ async function seed() {
         stockQty, reservedQty, Math.floor(stockQty * 0.2),
       ]);
       realProductIds.push(p.id);
-      productMeta[p.id] = { name: orchid.name, catName: catMap[catName] || 'Other Orchids' };
+      productMeta.set(p.id, { name: orchid.name, catName: catMap[catName] || 'Other Orchids' });
     }
 
     // 6b. Faker-generated products (490)
@@ -456,8 +380,8 @@ async function seed() {
     const supplyNames = ['Ceramic Pot','Hanging Basket','Orchid Mix','Sphagnum Moss','Bark Chips','Coconut Husk','Fertilizer Spoon','Misting Bottle','Pruning Shear','Plant Labels'];
 
     for (let i = 0; i < 490; i++) {
-      const catName = pick(Object.keys(categoryIds).filter(k => allLeafIds.includes(categoryIds[k])));
-      const catId = categoryIds[catName];
+      const catName = pick([...categoryIds.keys()].filter(k => allLeafIds.includes(categoryIds.get(k))));
+      const catId = categoryIds.get(catName);
       const pType = getProductType(catName);
 
       let productName, description;
@@ -495,7 +419,7 @@ async function seed() {
         basePrice, moq, stockQty, reservedQty, Math.max(1, Math.floor(stockQty * 0.1)), status,
       ]);
       allProductIds.push(p.id);
-      productMeta[p.id] = { name: productName, catName };
+      productMeta.set(p.id, { name: productName, catName });
     }
     console.log(`   → ${allProductIds.length} products (${realProductIds.length} real orchids + ${allProductIds.length - realProductIds.length} generated)`);
 
@@ -536,7 +460,7 @@ async function seed() {
     let imageCount = 0;
     let imageSkipped = 0;
     for (const pid of allProductIds) {
-      const meta = productMeta[pid];
+      const meta = productMeta.get(pid);
       const url = catalogueImageUrl(pid, meta.name, meta.catName);
       if (!url) { imageSkipped++; continue; }
       await pool.query(`
@@ -568,9 +492,9 @@ async function seed() {
         VALUES ($1,$2,$3,$4,$5,NOW())
         ON CONFLICT (email) DO UPDATE SET full_name = EXCLUDED.full_name
         RETURNING id
-      `, [bd.em, BUYER_PASSWORD_HASH, bd.name, roleMap['TRADE_BUYER'], bd.tier === 'ACTIVE' ? 'ACTIVE' : 'ACTIVE']);
+      `, [bd.em, BUYER_PASSWORD_HASH, bd.name, roleMap.get('TRADE_BUYER'), 'ACTIVE']);
 
-      const creditLimit = tiers[bd.tier].credit_cap;
+      const creditLimit = tiers.get(bd.tier).credit_cap;
       const { rows: [ta] } = await pool.query(`
         INSERT INTO trade_accounts (user_id, business_name, business_reg_no, phone, address,
                                      tier_id, credit_limit, payment_term, account_status,
@@ -579,9 +503,9 @@ async function seed() {
         RETURNING id
       `, [
         u.id, bd.name, `BRN-${randomInt(10000, 99999)}`, faker.phone.number(),
-        faker.location.streetAddress(), tiers[bd.tier].id,
+        faker.location.streetAddress(), tiers.get(bd.tier).id,
         creditLimit, bd.term, bd.status, bd.score,
-        bd.status === 'PENDING_APPROVAL' ? null : staffUsers['ADMIN'].id,
+        bd.status === 'PENDING_APPROVAL' ? null : staffUsers.get('ADMIN').id,
         bd.status === 'PENDING_APPROVAL' ? null : new Date(),
       ]);
       tradeBuyerUsers.push({ userId: u.id, accountId: ta.id, tier: bd.tier, status: bd.status, score: bd.score });
@@ -634,7 +558,7 @@ async function seed() {
           itemData.push({ pid, qty, unitPrice, lineTotal });
         }
 
-        const discountPct = parseFloat(tiers[buyer.tier].discount_rate);
+        const discountPct = parseFloat(tiers.get(buyer.tier).discount_rate);
         const tierDiscount = Math.round(subtotal * (discountPct / 100) * 100) / 100;
         const total = Math.round((subtotal - tierDiscount) * 100) / 100;
 
@@ -653,18 +577,18 @@ async function seed() {
         const flowIdx = orderStatusFlow.indexOf(status);
         if (flowIdx >= 2) {
           // APPROVED or later
-          approvedBy = staffUsers['ADMIN'].id;
+          approvedBy = staffUsers.get('ADMIN').id;
           approvedAt = new Date(orderDate.getTime() + randomInt(1, 24) * 3600000);
         }
         if (status === 'CANCELLED') {
-          cancelledBy = pick(Object.values(staffUsers)).id;
+          cancelledBy = pick([...staffUsers.values()]).id;
           cancelledAt = new Date(orderDate.getTime() + randomInt(1, 48) * 3600000);
           cancelReason = pick(['Buyer requested cancellation', 'Out of stock', 'Payment issue']);
           orderStatus = 'CANCELLED';
         } else if (status === 'REJECTED') {
           rejectionReason = pick(['Credit limit exceeded', 'Incomplete documentation', 'Product unavailable']);
           orderStatus = 'REJECTED';
-          approvedBy = staffUsers['ADMIN'].id;
+          approvedBy = staffUsers.get('ADMIN').id;
           approvedAt = new Date(orderDate.getTime() + randomInt(1, 24) * 3600000);
         }
 
@@ -694,7 +618,7 @@ async function seed() {
             await pool.query(`
               INSERT INTO stock_movements (product_id, movement_type, qty, ref_table, ref_id, performed_by, occurred_at)
               VALUES ($1,'ORDER_RESERVE',$2,'orders',$3,$4,$5)
-            `, [item.pid, -item.qty, String(order.id), staffUsers['INVENTORY_MANAGER'].id, created]);
+            `, [item.pid, -item.qty, String(order.id), staffUsers.get('INVENTORY_MANAGER').id, created]);
           }
         }
 
@@ -766,7 +690,7 @@ async function seed() {
                                         recorded_by, received_at)
                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
                 `, [payNo, inv.id, buyer.accountId, payAmount, method, ref,
-                    staffUsers['FINANCE_OFFICER'].id, receivedAt]);
+                    staffUsers.get('FINANCE_OFFICER').id, receivedAt]);
               } catch (_) {
                 // Skip idempotency violations
               }
@@ -804,7 +728,7 @@ async function seed() {
               UPDATE rma_requests
               SET decided_by = $2, decided_at = $3, resolution = $4, updated_at = NOW()
               WHERE id = $1
-            `, [rma.id, staffUsers['INVENTORY_MANAGER'].id,
+            `, [rma.id, staffUsers.get('INVENTORY_MANAGER').id,
                 new Date(created.getTime() + randomInt(1, 5) * 86400000),
                 rmaStatus === 'APPROVED' ? 'Return approved, credit to be issued' :
                 rmaStatus === 'REJECTED' ? 'Out of RMA window' :
@@ -826,7 +750,7 @@ async function seed() {
             RETURNING id
           `, [
             order.id,
-            staffUsers['DELIVERY_COORDINATOR'].id,
+            staffUsers.get('DELIVERY_COORDINATOR').id,
             delStatus,
             new Date(orderDate.getTime() + randomInt(3, 10) * 86400000),
             podUrl,
@@ -847,7 +771,7 @@ async function seed() {
             await pool.query(`
               INSERT INTO delivery_events (delivery_id, status, note, actor_id, occurred_at)
               VALUES ($1,$2,$3,$4,$5)
-            `, [del.id, ev.status, ev.note, staffUsers['DELIVERY_COORDINATOR'].id,
+            `, [del.id, ev.status, ev.note, staffUsers.get('DELIVERY_COORDINATOR').id,
                 new Date(orderDate.getTime() + ev.offset * 86400000)]);
           }
         }
@@ -879,7 +803,7 @@ async function seed() {
         ('announcement_bar', 'BANNER', '{"text":"🎉 Free delivery on orders over LKR 100,000","enabled":true,"bg_color":"#2d6a4f","text_color":"#ffffff"}', true, $1)
       ON CONFLICT (key) DO UPDATE
         SET content = EXCLUDED.content, updated_by = EXCLUDED.updated_by, updated_at = NOW()
-    `, [staffUsers['ADMIN'].id]);
+    `, [staffUsers.get('ADMIN').id]);
     console.log('   → 2 CMS blocks');
 
     // ---- 16. Settings already seeded in 0008 migration ----
@@ -889,10 +813,10 @@ async function seed() {
     console.log('\n========================================');
     console.log('🎉 Seed complete!');
     console.log('========================================');
-    console.log(`   Buyer tiers:    ${Object.keys(tiers).length}`);
-    console.log(`   Staff users:    ${Object.keys(staffUsers).length}`);
+    console.log(`   Buyer tiers:    ${tiers.size}`);
+    console.log(`   Staff users:    ${staffUsers.size + salesManagerUsers.length}`);
     console.log(`   Suppliers:      ${supplierIds.length}`);
-    console.log(`   Categories:     ${Object.keys(categoryIds).length}`);
+    console.log(`   Categories:     ${categoryIds.size}`);
     console.log(`   Products:       ${allProductIds.length}`);
     console.log(`   Trade buyers:   ${tradeBuyerUsers.length}`);
     console.log(`   Orders:         ${allOrderIds.length}`);

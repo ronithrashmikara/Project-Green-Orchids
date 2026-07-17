@@ -13,6 +13,7 @@ r.use(requireAuth);
 r.get('/',           requirePermission('delivery.view'), c.list);
 r.get('/:id',        requirePermission('delivery.view'), c.get);
 r.get('/:id/events', requirePermission('delivery.view'), c.getEvents);
+r.get('/:id/pod-file', requirePermission('delivery.view', 'pod.upload'), c.getPodFile);
 
 r.patch('/:id/assign',     requirePermission('delivery.assign'), validate({ body: assignSchema }), c.assign);
 r.patch('/:id/dispatch',   requirePermission('delivery.update'), c.dispatch);

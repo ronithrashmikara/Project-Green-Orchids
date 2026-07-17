@@ -2,10 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import axios from 'axios';
+import api from '@/lib/api';
 import { AuthBackdrop, AuthCard, AuthInput, AuthButton, IconTile } from '@/components/auth/AuthUI';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -16,7 +14,7 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await axios.post(`${API_URL}/auth/forgot-password`, { email });
+      await api.post('/auth/forgot-password', { email });
       setSent(true);
     } catch {
       setSent(true); // Always show success to prevent enumeration

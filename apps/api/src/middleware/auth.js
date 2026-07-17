@@ -3,175 +3,110 @@ const NodeCache = require('node-cache');
 const env = require('../config/env');
 const { query } = require('../config/db');
 
-// 30-second in-memory cache for user status checks
-const statusCache = new NodeCache({ stdTTL: 30, checkperiod: 10 });
+// Kept as an exported compatibility surface for callers that explicitly bust
+// user state. Authorization itself is intentionally loaded from PostgreSQL on
+// every request so role/status changes take effect immediately.
+const statusCache = new NodeCache({ stdTTL: 1, checkperiod: 1 });
 
-/**
- * Verify JWT access token and attach user to request
- */
+function bearerToken(req) {
+  const value = req.get('Authorization');
+  if (typeof value !== 'string') return null;
+  const match = /^Bearer ([A-Za-z0-9._~-]+)$/.exec(value);
+  return match ? match[1] : null;
+}
+
+async function currentPrincipal(payload) {
+  if (!payload?.sub || !payload?.iat) return null;
+  const result = await query(
+    `SELECT u.id, u.email, u.status, u.role_id, u.password_changed_at,
+            r.name AS role_name,
+            COALESCE(array_agg(p.code) FILTER (WHERE p.code IS NOT NULL), '{}') AS permissions
+       FROM users u
+       JOIN roles r ON r.id = u.role_id
+       LEFT JOIN role_permissions rp ON rp.role_id = r.id
+       LEFT JOIN permissions p ON p.id = rp.permission_id
+      WHERE u.id = $1
+      GROUP BY u.id, u.email, u.status, u.role_id, u.password_changed_at, r.name`,
+    [payload.sub]
+  );
+  if (!result.rows.length) return null;
+  const user = result.rows[0];
+  if (user.status !== 'ACTIVE') return { inactive: true, status: user.status };
+
+  const issuedAtMs = Number.isFinite(payload.iat_ms) ? payload.iat_ms : payload.iat * 1000;
+  if (!Number.isFinite(issuedAtMs)) return null;
+  if (user.password_changed_at && issuedAtMs < new Date(user.password_changed_at).getTime()) {
+    return { invalidated: true };
+  }
+
+  return {
+    id: user.id,
+    email: user.email,
+    roleId: user.role_id,
+    roleName: user.role_name,
+    permissions: user.permissions,
+  };
+}
+
+async function resolveToken(token) {
+  const payload = jwt.verify(token, env.JWT_ACCESS_SECRET, { algorithms: ['HS256'] });
+  return currentPrincipal(payload);
+}
+
 async function requireAuth(req, res, next) {
+  const token = bearerToken(req);
+  if (!token) {
+    return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Missing or invalid authorization header' } });
+  }
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        success: false,
-        error: { code: 'UNAUTHORIZED', message: 'Missing or invalid authorization header' },
-      });
+    const principal = await resolveToken(token);
+    if (!principal) return res.status(401).json({ success: false, error: { code: 'USER_NOT_FOUND', message: 'User not found' } });
+    if (principal.inactive) {
+      return res.status(403).json({ success: false, error: { code: 'ACCOUNT_INACTIVE', message: 'Account is inactive' } });
     }
-
-    const token = authHeader.split(' ')[1];
-    let payload;
-    try {
-      payload = jwt.verify(token, env.JWT_ACCESS_SECRET);
-    } catch (err) {
-      if (err.name === 'TokenExpiredError') {
-        return res.status(401).json({
-          success: false,
-          error: { code: 'TOKEN_EXPIRED', message: 'Access token has expired' },
-        });
-      }
-      return res.status(401).json({
-        success: false,
-        error: { code: 'INVALID_TOKEN', message: 'Invalid access token' },
-      });
+    if (principal.invalidated) {
+      return res.status(401).json({ success: false, error: { code: 'TOKEN_INVALIDATED', message: 'Please sign in again' } });
     }
-
-    // Check user status + password-change-invalidation cache
-    const cacheKey = `user_status_${payload.sub}`;
-    let cached = statusCache.get(cacheKey);
-
-    if (!cached) {
-      const result = await query(
-        'SELECT id, email, status, role_id, password_changed_at FROM users WHERE id = $1',
-        [payload.sub]
-      );
-      if (!result.rows.length) {
-        return res.status(401).json({
-          success: false,
-          error: { code: 'USER_NOT_FOUND', message: 'User not found' },
-        });
-      }
-      const user = result.rows[0];
-      cached = { status: user.status, passwordChangedAt: user.password_changed_at };
-      statusCache.set(cacheKey, cached);
-    }
-
-    if (cached.status !== 'ACTIVE') {
-      return res.status(403).json({
-        success: false,
-        error: { code: 'ACCOUNT_INACTIVE', message: `Account is ${cached.status.toLowerCase()}` },
-      });
-    }
-
-    // A password reset/change must kill access tokens issued before it, not
-    // just refresh tokens/sessions (F4.1) — otherwise a stolen 15-minute
-    // access token keeps working straight through a reset meant to revoke it.
-    //
-    // Standard `iat` is whole seconds (JWT spec) — too coarse to safely compare against a
-    // millisecond-precision password_changed_at (a token issued in the same wall-clock second as
-    // a change is genuinely ambiguous at that resolution). Prefer the custom `iat_ms` claim
-    // (real millisecond precision, set at sign time) when present; fall back to `iat * 1000` for
-    // tokens issued before this claim existed, which still leans toward the safe (reject-if-
-    // ambiguous) direction rather than the unsafe one.
-    const tokenIssuedAtMs = payload.iat_ms ?? (payload.iat * 1000);
-    if (payload.iat && cached.passwordChangedAt && tokenIssuedAtMs < new Date(cached.passwordChangedAt).getTime()) {
-      return res.status(401).json({
-        success: false,
-        error: { code: 'TOKEN_INVALIDATED', message: 'Password was changed after this token was issued; please sign in again' },
-      });
-    }
-
-    // Load permissions from role
-    const permResult = await query(
-      `SELECT p.code FROM permissions p
-       INNER JOIN role_permissions rp ON rp.permission_id = p.id
-       WHERE rp.role_id = $1`,
-      [payload.role_id]
-    );
-
-    req.user = {
-      id: payload.sub,
-      email: payload.email,
-      roleId: payload.role_id,
-      permissions: permResult.rows.map(r => r.code),
-    };
-
-    next();
+    req.user = principal;
+    return next();
   } catch (err) {
-    console.error('Auth middleware error:', err.message);
-    return res.status(500).json({
-      success: false,
-      error: { code: 'AUTH_ERROR', message: 'Authentication error' },
-    });
+    const expired = err?.name === 'TokenExpiredError';
+    if (expired || err?.name === 'JsonWebTokenError' || err?.name === 'NotBeforeError') {
+      return res.status(401).json({
+        success: false,
+        error: { code: expired ? 'TOKEN_EXPIRED' : 'INVALID_TOKEN', message: expired ? 'Access token has expired' : 'Invalid access token' },
+      });
+    }
+    return next(err);
   }
 }
 
-/**
- * Optional auth - doesn't fail if no token
- */
-async function optionalAuth(req, res, next) {
+async function optionalAuth(req, _res, next) {
+  const token = bearerToken(req);
+  if (!token) return next();
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return next();
-    }
-
-    const token = authHeader.split(' ')[1];
-    try {
-      const payload = jwt.verify(token, env.JWT_ACCESS_SECRET);
-      const permResult = await query(
-        `SELECT p.code FROM permissions p
-         INNER JOIN role_permissions rp ON rp.permission_id = p.id
-         WHERE rp.role_id = $1`,
-        [payload.role_id]
-      );
-      req.user = {
-        id: payload.sub,
-        email: payload.email,
-        roleId: payload.role_id,
-        permissions: permResult.rows.map(r => r.code),
-      };
-    } catch (_) {
-      // Token invalid, continue without auth
-    }
-    next();
+    const principal = await resolveToken(token);
+    if (principal && !principal.inactive && !principal.invalidated) req.user = principal;
   } catch (err) {
-    next();
+    if (!['TokenExpiredError', 'JsonWebTokenError', 'NotBeforeError'].includes(err?.name)) return next(err);
   }
+  return next();
 }
 
-/**
- * Require approved trade account for buyer routes
- */
 async function requireApprovedBuyer(req, res, next) {
   try {
-    const result = await query(
-      `SELECT account_status FROM trade_accounts WHERE user_id = $1`,
-      [req.user.id]
-    );
-    const approvedStatuses = ['APPROVED', 'ACTIVE'];
-    if (!result.rows.length || !approvedStatuses.includes(result.rows[0].account_status)) {
-      return res.status(403).json({
-        success: false,
-        error: { code: 'ACCOUNT_NOT_APPROVED', message: 'Trade account is not yet approved' },
-      });
+    const result = await query('SELECT account_status FROM trade_accounts WHERE user_id = $1', [req.user.id]);
+    if (!result.rows.length || !['APPROVED', 'ACTIVE'].includes(result.rows[0].account_status)) {
+      return res.status(403).json({ success: false, error: { code: 'ACCOUNT_NOT_APPROVED', message: 'Trade account is not yet approved' } });
     }
-    next();
+    return next();
   } catch (err) {
-    console.error('Buyer approval check error:', err.message);
-    return res.status(500).json({
-      success: false,
-      error: { code: 'INTERNAL_ERROR', message: 'Failed to verify account status' },
-    });
+    return next(err);
   }
 }
 
-/**
- * Bust the cached status for a user so suspend/lock/deactivate takes effect
- * immediately on this instance instead of waiting up to 30s (Finding 18 / F4.1).
- */
 function bustUserStatus(userId) {
   statusCache.del(`user_status_${userId}`);
 }
 
-module.exports = { requireAuth, optionalAuth, requireApprovedBuyer, bustUserStatus, statusCache };
+module.exports = { requireAuth, optionalAuth, requireApprovedBuyer, bustUserStatus, statusCache, currentPrincipal };

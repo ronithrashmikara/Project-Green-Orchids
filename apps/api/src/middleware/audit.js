@@ -7,16 +7,17 @@ const REDACT_RE = /secret|token|password|hash|api[_-]?key/i;
 
 function redactSensitive(obj, seen = new WeakSet()) {
   if (!obj || typeof obj !== 'object') return obj;
-  if (seen.has(obj)) return obj;
+  if (seen.has(obj)) return '[Circular]';
   seen.add(obj);
   if (Array.isArray(obj)) return obj.map(v => redactSensitive(v, seen));
-  const cleaned = {};
-  for (const [k, v] of Object.entries(obj)) {
-    if (REDACT_RE.test(k)) cleaned[k] = '[REDACTED]';
-    else if (v && typeof v === 'object') cleaned[k] = redactSensitive(v, seen);
-    else cleaned[k] = v;
-  }
-  return cleaned;
+  return Object.fromEntries(
+    Object.entries(obj)
+      .filter(([key]) => !['__proto__', 'prototype', 'constructor'].includes(key))
+      .map(([key, value]) => [
+        key,
+        REDACT_RE.test(key) ? '[REDACTED]' : redactSensitive(value, seen),
+      ])
+  );
 }
 
 // audit_logs schema columns: actor_id, actor_role, action, entity_type, entity_id,

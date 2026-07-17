@@ -3,6 +3,13 @@ name: CI
 on:
   push:
     branches: [main, develop]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
   pull_request:
     branches: [main, develop]
 
@@ -25,17 +32,10 @@ jobs:
           --health-timeout 5s
           --health-retries 10
 
-    env:
-      # Points at the service container above. scripts/run-tests.js derives an isolated
-      # "..._test" database from this and creates it itself — the real `project_green` name
-      # here is never actually used to hold data, only as the base to suffix from.
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/project_green
-      JWT_ACCESS_SECRET: ci-test-access-secret-not-a-real-secret
-      JWT_REFRESH_SECRET: ci-test-refresh-secret-not-a-real-secret
-      NODE_ENV: test
-
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
@@ -55,3 +55,9 @@ jobs:
 
       - name: Run the API integration test suite
         run: npm test
+        env:
+          # The test runner derives a disposable "_test" database from this URL.
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/project_green
+          JWT_ACCESS_SECRET: ci-test-access-secret-not-a-real-secret
+          JWT_REFRESH_SECRET: ci-test-refresh-secret-not-a-real-secret
+          NODE_ENV: test

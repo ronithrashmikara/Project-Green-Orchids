@@ -35,12 +35,19 @@ async function startServer() {
   return {
     baseUrl: `http://127.0.0.1:${port}/api`,
     pool: getPool(),
-    close: () => new Promise((resolve) => server.close(resolve)),
+    close: async () => {
+      await new Promise((resolve) => server.close(resolve));
+      await getPool().end();
+    },
   };
 }
 
-async function req(baseUrl, method, urlPath, { token, body, form } = {}) {
+async function req(baseUrl, method, urlPath, { token, body, form, csrf = true, origin } = {}) {
   const headers = {};
+  if (csrf && !['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase())) {
+    headers['X-Requested-With'] = 'XMLHttpRequest';
+  }
+  if (origin) headers.Origin = origin;
   if (token) headers.Authorization = `Bearer ${token}`;
   let fetchBody;
   if (form) {

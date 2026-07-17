@@ -186,12 +186,11 @@ const service = {
 
       const productIds = items.map(i => i.product_id);
       const lockedProducts = await repo.lockProductsForUpdate(client, productIds);
-      const map = {};
-      for (const p of lockedProducts) map[p.id] = p;
+      const productById = new Map(lockedProducts.map(p => [String(p.id), p]));
 
       // Re-verify availability = stock_qty - reserved_qty (Finding 7)
       for (const item of items) {
-        const p = map[item.product_id];
+        const p = productById.get(String(item.product_id));
         if (!p) throw new AppError('PRODUCT_NOT_FOUND', `Product ${item.product_id} not found`, 404);
         const avail = Number(p.stock_qty) - Number(p.reserved_qty || 0);
         if (avail < item.quantity) throw new AppError('INSUFFICIENT_STOCK', `Product has only ${avail} available, requested ${item.quantity}`, 409);
@@ -203,7 +202,7 @@ const service = {
 
       // Reserve (bump reserved_qty) + ledger movement
       for (const item of items) {
-        const p = map[item.product_id];
+        const p = productById.get(String(item.product_id));
         await repo.reserveStock(client, item.product_id, item.quantity);
         await repo.createStockMovement(client, {
           product_id: item.product_id, movement_type: 'ORDER_RESERVE', qty: item.quantity,

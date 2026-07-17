@@ -3,11 +3,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import axios from 'axios';
+import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { AuthBackdrop, AuthCard, AuthInput, AuthTextarea, AuthButton, IconTile } from '@/components/auth/AuthUI';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 // Mirrors apps/api/src/modules/auth/auth.schema.js registerSchema exactly, so a form that
 // passes here never gets rejected by the backend for a rule the user wasn't shown.
@@ -47,7 +45,7 @@ export default function RegisterPage() {
     if (form.password !== form.confirmPassword) return toast.error('Passwords do not match');
     setLoading(true);
     try {
-      await axios.post(`${API_URL}/auth/register`, {
+      await api.post('/auth/register', {
         businessName: form.businessName,
         businessRegNo: form.registrationNo,
         registrationNo: form.registrationNo,

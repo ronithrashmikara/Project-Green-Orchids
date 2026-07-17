@@ -53,7 +53,7 @@ const service = {
     const stored = await repo.getSettings(Object.values(SETTING_KEYS));
     const result = { ...DEFAULTS };
     for (const [name, dbKey] of Object.entries(SETTING_KEYS)) {
-      if (stored[dbKey] !== undefined) result[name] = stored[dbKey];
+      if (stored.has(dbKey)) result[name] = stored.get(dbKey);
     }
     return result;
   },
