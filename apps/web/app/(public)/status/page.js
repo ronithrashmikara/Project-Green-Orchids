@@ -27,10 +27,10 @@ export default function StatusPage() {
     try {
       const startedAt = Date.now();
       const res = await fetch('/api/healthz', { cache: 'no-store' });
-      if (!res.ok) throw new Error('bad response');
       const health = await res.json();
+      if (!res.ok && res.status !== 503) throw new Error('bad response');
       const latencyMs = Date.now() - startedAt;
-      const healthy = health?.status === 'healthy';
+      const healthy = res.ok && health?.status === 'healthy';
       setData({
         overall: healthy ? 'operational' : 'major_outage',
         checkedAt: health?.timestamp || new Date().toISOString(),
