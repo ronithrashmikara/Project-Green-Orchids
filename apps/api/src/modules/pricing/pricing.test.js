@@ -27,9 +27,9 @@ before(async () => {
   productId = created.data.data.id;
 
   // Two changes apply immediately; the third is parked pending approval.
-  await req(ctx.baseUrl, 'POST', `/products/${productId}/price-change`, { token: adminToken, body: { new_price: 1100, reason: 'first automated test change' } });
-  await req(ctx.baseUrl, 'POST', `/products/${productId}/price-change`, { token: adminToken, body: { new_price: 1200, reason: 'second automated test change' } });
-  await req(ctx.baseUrl, 'POST', `/products/${productId}/price-change`, { token: adminToken, body: { new_price: 1300, reason: 'third automated test change' } });
+  await req(ctx.baseUrl, 'POST', `/products/${productId}/price-change`, { token: inventoryToken, body: { new_price: 1100, reason: 'first automated test change' } });
+  await req(ctx.baseUrl, 'POST', `/products/${productId}/price-change`, { token: inventoryToken, body: { new_price: 1200, reason: 'second automated test change' } });
+  await req(ctx.baseUrl, 'POST', `/products/${productId}/price-change`, { token: inventoryToken, body: { new_price: 1300, reason: 'third automated test change' } });
 });
 
 after(async () => {
@@ -43,12 +43,12 @@ test('a pending price-change request shows up in the governance queue and can be
   const request = pending.data.data.find((r) => r.product_id === productId);
   assert.ok(request, 'the parked 3rd price change should appear in the pending requests queue');
 
-  // Approved by inventory (also holds price.approve), not the admin who requested it — the
-  // requesting admin approving their own request is correctly rejected as SELF_APPROVAL.
-  const selfApprove = await req(ctx.baseUrl, 'PATCH', `/pricing/requests/${request.id}/approve`, { token: adminToken, body: {} });
+  // Inventory can request changes but cannot approve them; approval is deliberately
+  // reserved for a different ADMIN actor by the final RBAC migration.
+  const selfApprove = await req(ctx.baseUrl, 'PATCH', `/pricing/requests/${request.id}/approve`, { token: inventoryToken, body: {} });
   assert.equal(selfApprove.status, 403);
 
-  const approved = await req(ctx.baseUrl, 'PATCH', `/pricing/requests/${request.id}/approve`, { token: inventoryToken, body: {} });
+  const approved = await req(ctx.baseUrl, 'PATCH', `/pricing/requests/${request.id}/approve`, { token: adminToken, body: {} });
   assert.equal(approved.status, 200);
 
   const product = await req(ctx.baseUrl, 'GET', `/products/${productId}`, { token: adminToken });

@@ -179,8 +179,8 @@ async function clearData(pool) {
     order_items, orders, cart_items, carts, rfq_items, rfqs, price_change_requests,
     price_history, bulk_pricing_tiers, product_images, stock_alerts, bloom_events,
     products, categories, suppliers, trade_accounts, auth_sessions, email_tokens,
-    login_history, cms_blocks, cms_media, users, role_access_windows, role_permissions,
-    permissions, roles, notifications_outbox, audit_logs, settings, buyer_tiers
+    login_history, cms_blocks, cms_media, users, role_access_windows,
+    notifications_outbox, audit_logs, settings, buyer_tiers
     RESTART IDENTITY CASCADE`);
 }
 
@@ -220,17 +220,8 @@ async function seed() {
 
     // ---- 2. Roles & permissions ----
     console.log('🛡️  Seeding roles & permissions…');
-    // Run 0002 migration (idempotent)
-    const fs = require('fs');
-    const path = require('path');
-    const migDir = path.resolve(__dirname, '..', 'apps', 'api', 'migrations');
-    const sql0002 = fs.readFileSync(path.join(migDir, '0002_roles_permissions.sql'), 'utf8');
-    await pool.query(sql0002);
-    // 0016 adds the SALES_MANAGER role + complaint/availability permissions
-    // (idempotent, so re-running the whole file here is safe).
-    const sql0016 = fs.readFileSync(path.join(migDir, '0016_sales_managers_complaints.sql'), 'utf8');
-    await pool.query(sql0016);
-
+    // The migration runner owns schema and authorization-matrix setup. Seed only
+    // inserts fixture data into the already-migrated disposable database.
     const { rows: rolesList } = await pool.query('SELECT id, name FROM roles');
     const roleMap = new Map(rolesList.map(r => [r.name, r.id]));
     console.log(`   → ${[...roleMap.keys()].join(', ')}`);

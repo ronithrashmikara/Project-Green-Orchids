@@ -89,9 +89,13 @@ function makeUploader(subdir) {
       if (!req.file) return next();
 
       const ext = path.extname(req.file.originalname || '').toLowerCase();
+      const filePath = path.resolve(req.file.path);
+      if (!filePath.startsWith(`${dest}${path.sep}`)) {
+        return next(new AppError('INVALID_UPLOAD_PATH', 'Invalid upload path', 400));
+      }
       let head;
       try {
-        const fd = fs.openSync(req.file.path, 'r');
+        const fd = fs.openSync(filePath, 'r');
         head = Buffer.alloc(16);
         fs.readSync(fd, head, 0, 16, 0);
         fs.closeSync(fd);
@@ -100,7 +104,7 @@ function makeUploader(subdir) {
       }
 
       if (!matchesSignature(head, ext)) {
-        fs.unlink(req.file.path, () => {});
+        fs.unlink(filePath, () => {});
         return next(new AppError('INVALID_FILE_TYPE', 'File content does not match an allowed image type', 400));
       }
       next();
