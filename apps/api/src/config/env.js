@@ -37,8 +37,12 @@ const env = {
   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
   CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
 
-  PAYHERE_MERCHANT_ID: process.env.PAYHERE_MERCHANT_ID,
-  PAYHERE_SECRET: process.env.PAYHERE_SECRET,
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+  STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+  STRIPE_CURRENCY: (process.env.STRIPE_CURRENCY || 'lkr').toLowerCase(),
+  STRIPE_MOCK_CHECKOUT: String(process.env.STRIPE_MOCK_CHECKOUT || '').toLowerCase() === 'true',
+  APP_PUBLIC_URL: process.env.APP_PUBLIC_URL || process.env.CORS_ORIGIN || 'http://localhost:3000',
+  API_PUBLIC_URL: process.env.API_PUBLIC_URL,
 
   EMAIL_ALLOWLIST: process.env.EMAIL_ALLOWLIST ? process.env.EMAIL_ALLOWLIST.split(',').map(s => s.trim()) : null,
   ENABLE_CRON: String(process.env.ENABLE_CRON || '').toLowerCase() === 'true',

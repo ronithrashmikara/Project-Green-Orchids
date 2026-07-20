@@ -47,7 +47,17 @@ app.use(requestId);
 app.use(globalLimiter);
 app.use(csrfProtection);
 app.use(cookieParser());
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({
+  limit: '10mb',
+  verify: (req, _res, buf) => {
+    // Stripe webhook signature verification must use the exact raw request body.
+    // Store it before JSON parsing so the payments module can call
+    // stripe.webhooks.constructEvent(rawBody, signature, endpointSecret).
+    if (req.originalUrl.startsWith('/api/payments/stripe/webhook')) {
+      req.rawBody = Buffer.from(buf);
+    }
+  },
+}));
 app.use(express.urlencoded({ extended: true }));
 app.use(auditMiddleware);
 

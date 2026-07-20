@@ -175,7 +175,7 @@ async function clearData(pool) {
   // this script is gated to disposable test DBs or explicit local resets below.
   await pool.query(`TRUNCATE TABLE
     complaint_messages, complaints, staff_availability, delivery_events, deliveries,
-    rma_items, invoice_adjustments, rma_requests, payments, invoices, stock_movements,
+    rma_items, invoice_adjustments, rma_requests, payment_gateway_transactions, payments, invoices, stock_movements,
     order_items, orders, cart_items, carts, rfq_items, rfqs, price_change_requests,
     price_history, bulk_pricing_tiers, product_images, stock_alerts, bloom_events,
     products, categories, suppliers, trade_accounts, auth_sessions, email_tokens,

@@ -91,14 +91,11 @@ const service = {
   },
 
   async pay(id, userId, data) {
-    const inv = await repo.findById(id);
-    if (!inv) throw new AppError('NOT_FOUND', 'Invoice not found', 404);
-    const buyerId = await resolveAccountId(userId);
-    if (inv.buyer_id !== buyerId) throw new AppError('FORBIDDEN', 'Access denied', 403);
-
-    // Reuse the same balance/overpayment logic staff payment recording uses.
+    // Buyer-controlled calls must never write directly to the payment ledger:
+    // they only initiate a provider checkout. A verified Stripe server callback
+    // records the actual payment after signature/status/amount validation.
     const paymentsService = require('../payments/payments.service');
-    return paymentsService.create({ invoice_id: id, amount: data.amount, method: data.method, reference: data.reference }, userId);
+    return paymentsService.initiateStripeCheckout(id, userId, data);
   },
 
   async getStatement(userId, isAdmin, { buyerUserId, month, year } = {}) {

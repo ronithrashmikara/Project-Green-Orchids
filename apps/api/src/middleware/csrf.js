@@ -1,7 +1,7 @@
 const env = require('../config/env');
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
-const EXEMPT_PATHS = new Set(['/api/payments/payhere/notify']);
+const EXEMPT_PATHS = new Set(['/api/payments/stripe/webhook']);
 
 function allowedOrigins() {
   return new Set(

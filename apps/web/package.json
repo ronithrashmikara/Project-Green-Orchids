@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node ../../scripts/build-web.js",
     "start": "next start"
   },
   "dependencies": {
+    "@next/swc-wasm-nodejs": "^15.5.20",
     "@tanstack/react-query": "^5.17.0",
     "axios": "^1.6.3",
     "clsx": "^2.1.0",

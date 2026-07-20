@@ -9,6 +9,17 @@ import { Spinner, EmptyState, ErrorState } from '@/components/ui/Spinner';
 import { PageHeader } from '@/components/domain/DashboardUI';
 import { formatLKR, formatDate } from '@/lib/utils';
 
+function normalizeInvoice(inv) {
+  return {
+    ...inv,
+    invoiceNo: inv.invoice_no || inv.invoiceNo,
+    createdAt: inv.created_at || inv.createdAt,
+    dueDate: inv.due_date || inv.dueDate,
+    total: Number(inv.total_amount ?? inv.total ?? 0),
+    balance: Number(inv.balance_due ?? inv.balance ?? 0),
+  };
+}
+
 export default function InvoicesListPage() {
   const router = useRouter();
   const [invoices, setInvoices] = useState([]);
@@ -21,7 +32,8 @@ export default function InvoicesListPage() {
       try {
         const params = filter ? `?status=${filter}` : '';
         const res = await api.get(`/invoices${params}`);
-        setInvoices(res.data.invoices || res.data.data || res.data);
+        const rows = res.data.invoices || res.data.data || res.data;
+        setInvoices((Array.isArray(rows) ? rows : []).map(normalizeInvoice));
       } catch (err) {
         setError(err.message);
       } finally {
@@ -43,7 +55,7 @@ export default function InvoicesListPage() {
     <div className="space-y-6">
       <PageHeader tone="violet" title="Invoices" description="View and manage your invoices and payment status." />
       <div className="flex gap-2">
-        {['', 'PAID', 'UNPAID', 'PARTIAL', 'OVERDUE'].map((s) => (
+        {['', 'PENDING', 'PARTIALLY_PAID', 'PAID', 'OVERDUE'].map((s) => (
           <button key={s} onClick={() => setFilter(s)} className={`px-3 py-1 text-sm rounded-full ${filter === s ? 'bg-green-700 text-white' : 'bg-gray-100'}`}>
             {s || 'All'}
           </button>

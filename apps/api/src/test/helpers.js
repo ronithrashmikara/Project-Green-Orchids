@@ -42,9 +42,9 @@ async function startServer() {
   };
 }
 
-async function req(baseUrl, method, urlPath, { token, body, form, csrf = true, origin } = {}) {
-  const headers = {};
-  if (csrf && !['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase())) {
+async function req(baseUrl, method, urlPath, { token, body, form, rawBody, headers: extraHeaders, csrf = true, origin } = {}) {
+  const headers = { ...(extraHeaders || {}) };
+  if (csrf && !['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase()) && !headers['X-Requested-With'] && !headers['x-requested-with']) {
     headers['X-Requested-With'] = 'XMLHttpRequest';
   }
   if (origin) headers.Origin = origin;
@@ -52,8 +52,11 @@ async function req(baseUrl, method, urlPath, { token, body, form, csrf = true, o
   let fetchBody;
   if (form) {
     fetchBody = form;
+  } else if (rawBody !== undefined) {
+    if (!headers['Content-Type'] && !headers['content-type']) headers['Content-Type'] = 'application/json';
+    fetchBody = rawBody;
   } else if (body !== undefined) {
-    headers['Content-Type'] = 'application/json';
+    if (!headers['Content-Type'] && !headers['content-type']) headers['Content-Type'] = 'application/json';
     fetchBody = JSON.stringify(body);
   }
   const res = await fetch(`${baseUrl}${urlPath}`, { method, headers, body: fetchBody });

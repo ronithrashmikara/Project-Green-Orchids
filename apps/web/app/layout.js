@@ -3,6 +3,7 @@ import { Providers } from './providers';
 import { CookieConsent } from '@/components/CookieConsent';
 
 export const metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
   title: 'Project Green - Wholesale Trade',
   description: 'B2B Wholesale Trade Platform for Orchids',
   openGraph: {

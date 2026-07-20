@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import api from '@/lib/api';
-import { Button, Input, Select } from '@/components/ui/Button';
+import { Button, Input } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { StatusBadge } from '@/components/domain/StatusBadge';
 import { Spinner, ErrorState } from '@/components/ui/Spinner';
@@ -20,7 +20,7 @@ export default function InvoiceDetailPage() {
   const [error, setError] = useState(null);
   const [showPay, setShowPay] = useState(false);
   const [paying, setPaying] = useState(false);
-  const [payForm, setPayForm] = useState({ amount: '', method: 'ONLINE', reference: '' });
+  const [payForm, setPayForm] = useState({ amount: '' });
 
   const load = async () => {
     try {
@@ -39,15 +39,20 @@ export default function InvoiceDetailPage() {
 
   const handlePay = async () => {
     const amount = parseFloat(payForm.amount);
-    if (!amount || amount <= 0) return toast.error('Enter a valid amount');
+    const balance = Number(invoice.balance_due);
+    if (!Number.isFinite(amount) || amount <= 0) return toast.error('Enter a valid amount');
+    if (amount > balance) return toast.error('Amount cannot exceed the balance due');
     setPaying(true);
     try {
-      await api.post(`/invoices/${id}/pay`, { amount, method: payForm.method, reference: payForm.reference || undefined });
-      toast.success('Payment recorded');
-      setShowPay(false);
-      load();
+      const res = await api.post(`/invoices/${id}/pay`, { amount });
+      const checkout = res.data.data || res.data;
+      if (!checkout?.checkout_url) {
+        throw new Error('Stripe checkout URL was not returned');
+      }
+      toast.success('Redirecting to Stripe…');
+      window.location.href = checkout.checkout_url;
     } catch (err) {
-      toast.error(err.response?.data?.error?.message || 'Payment failed');
+      toast.error(err.response?.data?.error?.message || err.message || 'Payment failed');
     } finally {
       setPaying(false);
     }
@@ -117,40 +122,25 @@ export default function InvoiceDetailPage() {
 
       <div className="flex gap-3 justify-end">
         <Button variant="outline" onClick={handleDownloadPDF}>Download PDF</Button>
-        {canPay && <Button onClick={() => setShowPay(true)}>Make a Payment</Button>}
+        {canPay && <Button onClick={() => setShowPay(true)}>Pay with Stripe</Button>}
       </div>
 
-      <Modal open={showPay} onClose={() => setShowPay(false)} title="Make a Payment" size="sm">
+      <Modal open={showPay} onClose={() => setShowPay(false)} title="Pay Online with Stripe" size="sm">
         <div className="space-y-4">
           <p className="text-sm text-gray-600">Balance due: <strong>{formatLKR(invoice.balance_due)}</strong></p>
+          <p className="text-xs text-gray-500">Your invoice balance updates only after Stripe sends a verified webhook.</p>
           <Input
             label="Amount (LKR)"
             type="number"
             step="0.01"
+            min="0.01"
             max={invoice.balance_due}
             value={payForm.amount}
             onChange={(e) => setPayForm((f) => ({ ...f, amount: e.target.value }))}
           />
-          <Select
-            label="Method"
-            value={payForm.method}
-            onChange={(e) => setPayForm((f) => ({ ...f, method: e.target.value }))}
-            options={[
-              { value: 'ONLINE', label: 'Online' },
-              { value: 'BANK_TRANSFER', label: 'Bank Transfer' },
-              { value: 'CHEQUE', label: 'Cheque' },
-              { value: 'CASH', label: 'Cash' },
-            ]}
-          />
-          <Input
-            label="Reference (optional)"
-            value={payForm.reference}
-            onChange={(e) => setPayForm((f) => ({ ...f, reference: e.target.value }))}
-            placeholder="Transaction / cheque number"
-          />
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setShowPay(false)}>Cancel</Button>
-            <Button onClick={handlePay} loading={paying}>Confirm Payment</Button>
+            <Button onClick={handlePay} loading={paying}>Continue to Stripe</Button>
           </div>
         </div>
       </Modal>
