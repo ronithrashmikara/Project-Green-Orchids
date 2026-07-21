@@ -29,3 +29,12 @@ scripts/dev-tools/
 # session scratch space (rendering sources, temp API/DB test artefacts)
 tmp/
 docs-panel-core/
+
+# GitHub docs cleanup: keep these local-only if present.
+# They are legacy/duplicate/broken evidence artefacts removed from tracked repo.
+docs/image-assets/legacy-images/
+docs/image-assets/scope-frames.zip
+docs/media/videos/Project-Green-DB-BugFixes.mp4
+docs/media/videos/Project-Green-Demo.mp4
+docs/media/videos/Project-Green-Scope.mp4
+docs/media/videos/generated/fixed-features/03_Buyer_Catalogue_Add_to_Cart.mp4
