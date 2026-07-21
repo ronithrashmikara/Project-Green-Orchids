@@ -2,7 +2,7 @@
 # Each area is owned by its lead; review requests auto-route here.
 
 # Default
-*                                   @InfiniteBloom-max
+*                                   @ronithrashmikara
 
 # Auth, RBAC, accounts, security
 /apps/api/src/modules/auth/         @Sithum77
@@ -29,8 +29,8 @@
 /docs/                              @rtwijendra
 
 # Delivery, reports, platform, CI, DB
-/apps/api/src/modules/delivery/     @InfiniteBloom-max
-/apps/api/src/modules/reports/      @InfiniteBloom-max
-/apps/api/src/jobs/                 @InfiniteBloom-max
-/apps/api/migrations/               @InfiniteBloom-max @darkgladiator77
-/.github/                           @InfiniteBloom-max
+/apps/api/src/modules/delivery/     @ronithrashmikara
+/apps/api/src/modules/reports/      @ronithrashmikara
+/apps/api/src/jobs/                 @ronithrashmikara
+/apps/api/migrations/               @ronithrashmikara @darkgladiator77
+/.github/                           @ronithrashmikara
