@@ -44,8 +44,21 @@ async function startServer() {
 
 async function req(baseUrl, method, urlPath, { token, body, form, rawBody, headers: extraHeaders, csrf = true, origin } = {}) {
   const headers = { ...(extraHeaders || {}) };
-  if (csrf && !['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase()) && !headers['X-Requested-With'] && !headers['x-requested-with']) {
-    headers['X-Requested-With'] = 'XMLHttpRequest';
+  if (csrf && !['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase())) {
+    if (!headers['X-Requested-With'] && !headers['x-requested-with']) {
+      headers['X-Requested-With'] = 'XMLHttpRequest';
+    }
+    if (!headers['X-CSRF-Token'] && !headers['x-csrf-token']) {
+      const tokenRes = await fetch(`${baseUrl}/csrf-token`, {
+        method: 'GET',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      });
+      const tokenData = await tokenRes.json();
+      headers['X-CSRF-Token'] = tokenData.csrfToken;
+      if (!headers.Cookie && !headers.cookie) {
+        headers.Cookie = `xsrf_token=${encodeURIComponent(tokenData.csrfToken)}`;
+      }
+    }
   }
   if (origin) headers.Origin = origin;
   if (token) headers.Authorization = `Bearer ${token}`;

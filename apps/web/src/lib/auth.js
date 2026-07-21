@@ -2,11 +2,16 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
-import { setAccessToken, clearAccessToken, getAccessToken } from './api';
+import { setAccessToken, clearAccessToken, ensureCsrfToken } from './api';
 
 const AuthContext = createContext(null);
 
-const SAME_ORIGIN_HEADERS = { 'X-Requested-With': 'XMLHttpRequest' };
+async function sameOriginHeaders() {
+  return {
+    'X-Requested-With': 'XMLHttpRequest',
+    'X-CSRF-Token': await ensureCsrfToken(),
+  };
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -17,7 +22,7 @@ export function AuthProvider({ children }) {
     try {
       const res = await axios.post('/api/auth/refresh', {}, {
         withCredentials: true,
-        headers: SAME_ORIGIN_HEADERS,
+        headers: await sameOriginHeaders(),
       });
       const { accessToken, user: userData } = res.data;
       setAccessToken(accessToken);
@@ -48,7 +53,7 @@ export function AuthProvider({ children }) {
     const res = await axios.post(
       '/api/auth/login',
       { email, password },
-      { withCredentials: true, headers: SAME_ORIGIN_HEADERS }
+      { withCredentials: true, headers: await sameOriginHeaders() }
     );
     const { accessToken, user: userData } = res.data;
     setAccessToken(accessToken);
@@ -61,7 +66,7 @@ export function AuthProvider({ children }) {
     try {
       await axios.post('/api/auth/logout', {}, {
         withCredentials: true,
-        headers: SAME_ORIGIN_HEADERS,
+        headers: await sameOriginHeaders(),
       });
     } catch {
       // Ignore

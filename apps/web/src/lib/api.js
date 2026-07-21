@@ -1,6 +1,8 @@
 import axios from 'axios';
 
 let accessToken = null;
+let csrfToken = null;
+let csrfTokenPromise = null;
 
 // Routes a guest is allowed to view — never bounce them to /login from here.
 const PUBLIC_PATHS = [
@@ -23,6 +25,45 @@ export function clearAccessToken() {
   accessToken = null;
 }
 
+function readCookie(name) {
+  if (typeof document === 'undefined') return null;
+  const row = document.cookie
+    .split('; ')
+    .find((value) => value.startsWith(`${name}=`));
+  return row ? decodeURIComponent(row.split('=').slice(1).join('=')) : null;
+}
+
+function isUnsafeMethod(method = 'get') {
+  return !['get', 'head', 'options'].includes(String(method).toLowerCase());
+}
+
+export async function ensureCsrfToken() {
+  if (csrfToken) return csrfToken;
+
+  const cookieToken = readCookie('xsrf_token');
+  if (cookieToken) {
+    csrfToken = cookieToken;
+    return csrfToken;
+  }
+
+  if (!csrfTokenPromise) {
+    csrfTokenPromise = axios
+      .get('/api/csrf-token', {
+        withCredentials: true,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      })
+      .then((response) => {
+        csrfToken = response.data?.csrfToken || readCookie('xsrf_token');
+        return csrfToken;
+      })
+      .finally(() => {
+        csrfTokenPromise = null;
+      });
+  }
+
+  return csrfTokenPromise;
+}
+
 const api = axios.create({
   // Keep browser API traffic same-origin. Deployment environment values must
   // never become arbitrary browser request origins.
@@ -32,13 +73,18 @@ const api = axios.create({
     'Content-Type': 'application/json',
     'X-Requested-With': 'XMLHttpRequest',
   },
+  xsrfCookieName: 'xsrf_token',
+  xsrfHeaderName: 'X-CSRF-Token',
 });
 
-api.interceptors.request.use((config) => {
+api.interceptors.request.use(async (config) => {
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
   }
   config.headers['X-Requested-With'] = 'XMLHttpRequest';
+  if (isUnsafeMethod(config.method) && !config.headers['X-CSRF-Token']) {
+    config.headers['X-CSRF-Token'] = await ensureCsrfToken();
+  }
   return config;
 });
 
@@ -77,10 +123,11 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
+        const token = await ensureCsrfToken();
         const response = await axios.post(
           '/api/auth/refresh',
           {},
-          { withCredentials: true, headers: { 'X-Requested-With': 'XMLHttpRequest' } }
+          { withCredentials: true, headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-Token': token } }
         );
         const newToken = response.data.accessToken;
         accessToken = newToken;

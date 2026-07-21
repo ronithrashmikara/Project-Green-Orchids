@@ -9,7 +9,7 @@ const cookieParser = require('cookie-parser');
 const requestId = require('./middleware/request_id');
 const { globalLimiter } = require('./middleware/rateLimit');
 const { auditMiddleware } = require('./middleware/audit');
-const { csrfProtection } = require('./middleware/csrf');
+const { csrfProtection, issueCsrfToken } = require('./middleware/csrf');
 const { AppError, errorHandler, notFoundHandler, setupGlobalHandlers } = require('./middleware/errors');
 const { registerJobs } = require('./jobs');
 const { UPLOADS_ROOT } = require('./middleware/upload');
@@ -41,12 +41,12 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id', 'X-Requested-With', 'X-CSRF-Token', 'X-XSRF-TOKEN'],
 }));
 app.use(requestId);
 app.use(globalLimiter);
-app.use(csrfProtection);
 app.use(cookieParser());
+app.use(csrfProtection);
 app.use(express.json({
   limit: '10mb',
   verify: (req, _res, buf) => {
@@ -73,6 +73,7 @@ const healthz = async (_req, res) => {
   }
 };
 app.get('/healthz', healthz);
+app.get('/api/csrf-token', issueCsrfToken);
 
 // ── Uploaded file serving (POD photos, etc.) ──
 const publicUploads = (req, res, next) => {
