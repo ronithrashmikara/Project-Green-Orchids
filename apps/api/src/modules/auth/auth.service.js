@@ -57,6 +57,13 @@ const authService = {
     // Check if email already exists
     const existing = await authRepository.findUserByEmail(email);
     if (existing) {
+      if (existing.status === 'PENDING') {
+        throw new AppError(
+          'EMAIL_NOT_VERIFIED',
+          'This account is already registered but its email is not verified. Enter a verification code or request a new one.',
+          409
+        );
+      }
       throw new AppError('EMAIL_EXISTS', 'An account with this email already exists', 409);
     }
 
@@ -146,6 +153,13 @@ const authService = {
 
     // Check user status
     if (user.status !== 'ACTIVE') {
+      if (user.status === 'PENDING') {
+        throw new AppError(
+          'EMAIL_NOT_VERIFIED',
+          'Your email is not verified. Enter a verification code or request a new one.',
+          403
+        );
+      }
       throw new AppError('ACCOUNT_INACTIVE', `Account is ${user.status.toLowerCase()}. ${user.status === 'PENDING' ? 'Please verify your email.' : ''}`, 403);
     }
 

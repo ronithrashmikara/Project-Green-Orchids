@@ -10,13 +10,19 @@ const FOCUSABLE =
 export function Modal({ open, onClose, title, children, size = 'md', className }) {
   const panelRef = useRef(null);
   const previouslyFocused = useRef(null);
+  const onCloseRef = useRef(onClose);
+
+  // Inline onClose callbacks get a new identity whenever a parent form updates.
+  // Keep the latest callback in a ref so typing does not tear down this effect,
+  // restore focus, and force users to re-place the cursor after every character.
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
     previouslyFocused.current = document.activeElement;
 
     const handler = (e) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') onCloseRef.current?.();
       if (e.key === 'Tab' && panelRef.current) {
         // Minimal focus trap: keep Tab cycling inside the dialog.
         const focusables = panelRef.current.querySelectorAll(FOCUSABLE);
@@ -50,7 +56,7 @@ export function Modal({ open, onClose, title, children, size = 'md', className }
       document.body.style.overflow = prevOverflow;
       previouslyFocused.current?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

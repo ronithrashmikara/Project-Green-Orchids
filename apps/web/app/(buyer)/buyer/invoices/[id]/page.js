@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import api from '@/lib/api';
@@ -20,7 +20,9 @@ export default function InvoiceDetailPage() {
   const [error, setError] = useState(null);
   const [showPay, setShowPay] = useState(false);
   const [paying, setPaying] = useState(false);
+  const [checkingPayment, setCheckingPayment] = useState(false);
   const [payForm, setPayForm] = useState({ amount: '' });
+  const handledStripeReturn = useRef(false);
 
   const load = async () => {
     try {
@@ -36,6 +38,43 @@ export default function InvoiceDetailPage() {
   };
 
   useEffect(() => { load(); }, [id]);
+
+  useEffect(() => {
+    if (handledStripeReturn.current || typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const paymentResult = params.get('payment');
+    const sessionId = params.get('session_id');
+    if (!paymentResult) return;
+    handledStripeReturn.current = true;
+
+    if (paymentResult === 'cancel') {
+      toast('Stripe checkout was cancelled. No payment was recorded.');
+      window.history.replaceState({}, '', window.location.pathname);
+      return;
+    }
+    if (paymentResult !== 'success' || !sessionId) return;
+
+    (async () => {
+      setCheckingPayment(true);
+      try {
+        const res = await api.post(`/invoices/${id}/pay/confirm`, { session_id: sessionId });
+        const result = res.data.data || res.data;
+        await load();
+        if (result.settled) {
+          setShowPay(false);
+          toast.success('Payment confirmed. Your invoice is now updated.');
+        } else {
+          toast('Stripe is still processing this payment. Refresh shortly to see the final status.');
+        }
+      } catch (err) {
+        await load();
+        toast.error(err.response?.data?.error?.message || 'We could not confirm the Stripe payment yet.');
+      } finally {
+        setCheckingPayment(false);
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    })();
+  }, [id]);
 
   const handlePay = async () => {
     const amount = parseFloat(payForm.amount);
@@ -88,6 +127,11 @@ export default function InvoiceDetailPage() {
       />
 
       <div className="grid grid-cols-2 gap-4">
+        {checkingPayment && (
+          <div className="col-span-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm font-medium text-violet-700">
+            Confirming your Stripe payment and updating this invoice…
+          </div>
+        )}
         <Card>
           <h3 className="text-sm font-medium mb-3">Summary</h3>
           <div className="space-y-2">

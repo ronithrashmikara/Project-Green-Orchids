@@ -56,7 +56,13 @@ export default function RegisterPage() {
       });
       setSuccess(true);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Registration failed');
+      const apiError = err.response?.data?.error;
+      if (apiError?.code === 'EMAIL_NOT_VERIFIED') {
+        toast('This account already exists and still needs email verification.');
+        router.push(`/verify-email?email=${encodeURIComponent(form.email)}&from=register`);
+        return;
+      }
+      toast.error(apiError?.message || 'Registration failed');
     } finally {
       setLoading(false);
     }

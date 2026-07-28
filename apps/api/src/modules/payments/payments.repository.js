@@ -127,6 +127,14 @@ const repo = {
     );
     return r.rows[0] || null;
   },
+  async findGatewayTransactionByOrderId(gatewayOrderId) {
+    const r = await query(
+      `SELECT * FROM payment_gateway_transactions
+       WHERE gateway_order_id = $1`,
+      [gatewayOrderId]
+    );
+    return r.rows[0] || null;
+  },
   async updateGatewayTransaction(client, id, data) {
     const r = await client.query(
       `UPDATE payment_gateway_transactions
