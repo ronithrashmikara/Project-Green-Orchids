@@ -2,6 +2,7 @@
 const path = require('path');
 
 const nextConfig = {
+  devIndicators: false,
   outputFileTracingRoot: path.join(__dirname, '../..'),
   async rewrites() {
     return [
