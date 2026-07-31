@@ -131,14 +131,26 @@ export default function ProductFormPage({ isEdit = false }) {
   };
 
   const handleChangePrice = async () => {
+    const parsedPrice = Number(newPrice);
+    const reason = priceReason.trim();
+    if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
+      toast.error('Enter a valid price greater than zero');
+      return;
+    }
+    if (reason.length < 5) {
+      toast.error('Please enter a reason of at least 5 characters');
+      return;
+    }
     setChangingPrice(true);
     try {
-      const res = await api.post(`/products/${id}/price-change`, { new_price: parseFloat(newPrice), reason: priceReason });
+      const res = await api.post(`/products/${id}/price-change`, { new_price: parsedPrice, reason });
       if (res.data.data?.needs_approval) toast.success('A 3rd price change in 24h needs another admin\'s approval — request queued');
       else { toast.success('Price updated'); const r = await api.get(`/products/${id}`); setProduct(r.data.data); }
       setPriceReason('');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Price change failed');
+      const apiError = err.response?.data?.error;
+      const detail = apiError?.details?.[0]?.message;
+      toast.error(detail || apiError?.message || err.message || 'Price change failed');
     } finally {
       setChangingPrice(false);
     }
@@ -196,7 +208,7 @@ export default function ProductFormPage({ isEdit = false }) {
               <p className="text-xs text-gray-500 mb-3">Price changes are governed: two changes per rolling 24h are applied immediately; a third requires a different admin's approval.</p>
               <div className="grid grid-cols-2 gap-3 items-end">
                 <Input label="New Price (LKR)" type="number" step="0.01" min="0.01" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} />
-                <Input label="Reason" value={priceReason} onChange={(e) => setPriceReason(e.target.value)} placeholder="Required for the approval queue" />
+                <Input label="Reason (required, minimum 5 characters)" value={priceReason} onChange={(e) => setPriceReason(e.target.value)} placeholder="Explain why the price is changing" />
               </div>
               <Button className="mt-3" onClick={handleChangePrice} loading={changingPrice} disabled={!newPrice || Number(newPrice) === Number(product?.basePrice)}>Change Price</Button>
             </div>

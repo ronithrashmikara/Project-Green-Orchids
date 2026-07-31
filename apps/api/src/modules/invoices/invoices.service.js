@@ -98,6 +98,11 @@ const service = {
     return paymentsService.initiateStripeCheckout(id, userId, data);
   },
 
+  async confirmStripePayment(id, userId, sessionId) {
+    const paymentsService = require('../payments/payments.service');
+    return paymentsService.confirmStripeCheckout(id, userId, sessionId);
+  },
+
   async getStatement(userId, isAdmin, { buyerUserId, month, year } = {}) {
     const targetUserId = isAdmin && buyerUserId ? buyerUserId : userId;
     const buyerId = await resolveAccountId(targetUserId);

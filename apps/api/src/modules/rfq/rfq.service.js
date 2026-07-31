@@ -14,7 +14,12 @@ const service = {
     await tx(async (client) => {
       rfq = await repo.create(client, { rfq_number: rfqNumber, buyer_id: acct.id, notes: data.notes });
       for (const item of data.items) {
-        await repo.createItem(client, { rfq_id: rfq.id, product_id: item.product_id, quantity: item.quantity, notes: item.notes });
+        await repo.createItem(client, {
+          rfq_id: rfq.id,
+          product_id: item.product_id,
+          quantity: item.quantity,
+          target_price: item.target_price,
+        });
       }
     });
     try {

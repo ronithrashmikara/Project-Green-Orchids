@@ -18,6 +18,7 @@ export default function VerifyEmailPage() {
 function VerifyEmailForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const resumedRegistration = ['login', 'register'].includes(searchParams.get('from'));
   const [email, setEmail] = useState(searchParams.get('email') || '');
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -73,7 +74,9 @@ function VerifyEmailForm() {
         <Link href="/" className="font-serif-display text-xl text-white">Orchids</Link>
         <h1 className="mt-5 font-serif-display text-3xl text-white">Verify your email</h1>
         <p className="mt-2 text-sm text-white/55">
-          Enter the 6-digit code we sent to your email address. It expires in 15 minutes.
+          {resumedRegistration
+            ? 'Your account is registered but the email is not verified yet. Enter your code below, or request a new one.'
+            : 'Enter the 6-digit code we sent to your email address. It expires in 15 minutes.'}
         </p>
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <AuthInput label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />

@@ -19,8 +19,9 @@ const repo = {
   },
   async createItem(client, data) {
     const r = await (client ? client.query.bind(client) : query)(
-      `INSERT INTO rfq_items (rfq_id, product_id, requested_qty) VALUES ($1,$2,$3) RETURNING *`,
-      [data.rfq_id, data.product_id, data.quantity]
+      `INSERT INTO rfq_items (rfq_id, product_id, requested_qty, requested_unit_price)
+       VALUES ($1,$2,$3,$4) RETURNING *`,
+      [data.rfq_id, data.product_id, data.quantity, data.target_price ?? null]
     );
     return r.rows[0];
   },

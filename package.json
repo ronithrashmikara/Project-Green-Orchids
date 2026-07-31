@@ -10,9 +10,10 @@
     "packages/*"
   ],
   "overrides": {
-    "postcss": "$postcss",
+    "postcss": "8.5.25",
     "react": "$react",
-    "react-dom": "$react-dom"
+    "react-dom": "$react-dom",
+    "sharp": "0.35.3"
   },
   "scripts": {
     "dev:api": "cd apps/api && npm run dev",
@@ -28,9 +29,10 @@
     "pdf-lib": "^1.17.1",
     "puppeteer-core": "^25.1.0",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "sharp": "0.35.3"
   },
   "devDependencies": {
-    "postcss": "^8.5.15"
+    "postcss": "8.5.25"
   }
 }

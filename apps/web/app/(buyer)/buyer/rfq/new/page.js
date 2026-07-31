@@ -47,12 +47,20 @@ export default function NewRFQPage() {
     }
     setSubmitting(true);
     try {
-      const res = await api.post('/rfqs', { lines });
+      const items = lines.map((line) => ({
+        product_id: Number(line.productId),
+        quantity: Number(line.quantity),
+        ...(line.targetPrice !== '' ? { target_price: Number(line.targetPrice) } : {}),
+        ...(line.note.trim() ? { notes: line.note.trim() } : {}),
+      }));
+      const res = await api.post('/rfqs', { items });
       localStorage.removeItem(DRAFT_KEY);
       toast.success('RFQ submitted successfully');
-      router.push(`/buyer/rfq/${res.data.id}`);
+      router.push(`/buyer/rfq/${res.data.data.id}`);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to submit RFQ');
+      const apiError = err.response?.data?.error;
+      const detail = apiError?.details?.[0]?.message;
+      toast.error(detail || apiError?.message || err.message || 'Failed to submit RFQ');
     } finally {
       setSubmitting(false);
     }

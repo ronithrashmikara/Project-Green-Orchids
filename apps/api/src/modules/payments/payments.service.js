@@ -44,22 +44,36 @@ function requireStripeConfig() {
 }
 
 let stripeClient;
+const mockStripeSessions = new Map();
 function getStripeClient() {
   requireStripeConfig();
   if (env.STRIPE_MOCK_CHECKOUT) {
     return {
       checkout: {
         sessions: {
-          create: async (params) => ({
-            id: `cs_test_${crypto.randomBytes(10).toString('hex')}`,
-            object: 'checkout.session',
-            url: `https://checkout.stripe.com/c/pay/cs_test_${crypto.randomBytes(8).toString('hex')}`,
-            client_reference_id: params.client_reference_id,
-            currency: params.line_items?.[0]?.price_data?.currency,
-            amount_total: params.line_items?.[0]?.price_data?.unit_amount,
-            payment_status: 'unpaid',
-            metadata: params.metadata || {},
-          }),
+          create: async (params) => {
+            const session = {
+              id: `cs_test_${crypto.randomBytes(10).toString('hex')}`,
+              object: 'checkout.session',
+              url: `https://checkout.stripe.com/c/pay/cs_test_${crypto.randomBytes(8).toString('hex')}`,
+              client_reference_id: params.client_reference_id,
+              currency: params.line_items?.[0]?.price_data?.currency,
+              amount_total: params.line_items?.[0]?.price_data?.unit_amount,
+              payment_status: 'unpaid',
+              metadata: params.metadata || {},
+            };
+            mockStripeSessions.set(session.id, session);
+            return session;
+          },
+          retrieve: async (sessionId) => {
+            const session = mockStripeSessions.get(sessionId);
+            if (!session) {
+              const error = new Error('No such checkout session');
+              error.type = 'StripeInvalidRequestError';
+              throw error;
+            }
+            return session;
+          },
         },
       },
     };
@@ -439,6 +453,60 @@ const service = {
     }
   },
 
+  async confirmStripeCheckout(invoiceId, userId, sessionId) {
+    requireStripeConfig();
+    const invoiceIdNum = Number(invoiceId);
+    if (!Number.isInteger(invoiceIdNum) || invoiceIdNum <= 0) {
+      throw new AppError('VALIDATION_ERROR', 'Invalid invoice id', 422);
+    }
+
+    let session;
+    try {
+      session = await getStripeClient().checkout.sessions.retrieve(sessionId);
+    } catch (err) {
+      throw new AppError(
+        'STRIPE_SESSION_INVALID',
+        'The Stripe checkout session could not be verified.',
+        400
+      );
+    }
+
+    const gatewayOrderId = session.client_reference_id || session.metadata?.gateway_order_id;
+    const gatewayTransaction = gatewayOrderId
+      ? await repo.findGatewayTransactionByOrderId(gatewayOrderId)
+      : null;
+
+    // A Checkout Session ID is not authorization. Bind the server-retrieved
+    // session to both the requested invoice and the signed-in buyer who created it.
+    if (
+      !gatewayTransaction
+      || Number(gatewayTransaction.invoice_id) !== invoiceIdNum
+      || gatewayTransaction.created_by !== userId
+      || String(session.metadata?.invoice_id || '') !== String(invoiceIdNum)
+    ) {
+      throw new AppError('STRIPE_SESSION_NOT_FOUND', 'No matching Stripe checkout was found for this invoice.', 404);
+    }
+
+    if (session.payment_status !== 'paid') {
+      return {
+        settled: false,
+        payment_status: session.payment_status || 'unpaid',
+        transaction_status: gatewayTransaction.status,
+      };
+    }
+
+    // Stripe's signed webhook remains the primary path. This authenticated,
+    // server-to-server reconciliation covers the success-page race (or a delayed
+    // webhook) without trusting any status supplied by the browser.
+    await handleStripeSessionPaid(session, 'checkout.return.reconciliation');
+    const updated = await repo.findGatewayTransactionByOrderId(gatewayOrderId);
+    return {
+      settled: updated?.status === 'COMPLETED',
+      payment_status: session.payment_status,
+      transaction_status: updated?.status || gatewayTransaction.status,
+    };
+  },
+
   async reverse(id, data, actor) {
     await tx(async (client) => {
       const payment = await repo.lockPayment(client, id);
@@ -488,6 +556,9 @@ const service = {
     }
 
     const session = event.data?.object;
+    if (env.STRIPE_MOCK_CHECKOUT && session?.id) {
+      mockStripeSessions.set(session.id, session);
+    }
     switch (event.type) {
       case 'checkout.session.completed':
         if (session.payment_status === 'paid') {

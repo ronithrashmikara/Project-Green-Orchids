@@ -112,6 +112,13 @@ test('buyer online payment creates a Stripe Checkout Session and only a signed p
   assert.equal(Number(afterInit.data.data.paid_amount), 0, 'checkout initiation must not self-record a payment');
   assert.equal(afterInit.data.data.status, 'PENDING');
 
+  const stillUnpaid = await req(ctx.baseUrl, 'POST', `/invoices/${onlineInvoice.id}/pay/confirm`, {
+    token: buyerToken,
+    body: { session_id: session.session_id },
+  });
+  assert.equal(stillUnpaid.status, 200);
+  assert.equal(stillUnpaid.data.data.settled, false, 'the return-page check must not trust the browser or settle an unpaid session');
+
   const baseStripeSession = {
     id: session.session_id,
     object: 'checkout.session',
@@ -143,6 +150,13 @@ test('buyer online payment creates a Stripe Checkout Session and only a signed p
   const afterSuccess = await req(ctx.baseUrl, 'GET', `/invoices/${onlineInvoice.id}`, { token: financeToken });
   assert.equal(afterSuccess.data.data.status, 'PAID');
   assert.equal(Number(afterSuccess.data.data.balance_due), 0);
+
+  const confirmedOnReturn = await req(ctx.baseUrl, 'POST', `/invoices/${onlineInvoice.id}/pay/confirm`, {
+    token: buyerToken,
+    body: { session_id: session.session_id },
+  });
+  assert.equal(confirmedOnReturn.status, 200);
+  assert.equal(confirmedOnReturn.data.data.settled, true, 'the success-page reconciliation should report the settled invoice');
 
   const replay = await postStripeEvent({
     id: `evt_replay_${session.session_id}`,

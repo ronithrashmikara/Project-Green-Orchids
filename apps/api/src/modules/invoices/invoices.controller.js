@@ -11,6 +11,12 @@ module.exports = {
     } catch (e) { n(e); }
   },
   pay: async (r, res, n) => { try { const d = await s.pay(r.params.id, r.user.id, r.body); res.status(201).json({ success: true, data: d }); } catch (e) { n(e); } },
+  confirmStripePayment: async (r, res, n) => {
+    try {
+      const d = await s.confirmStripePayment(r.params.id, r.user.id, r.body.session_id);
+      res.json({ success: true, data: d });
+    } catch (e) { n(e); }
+  },
   statement: async (r, res, n) => {
     try {
       const [year, month] = (r.query.month || '').split('-').map(Number);

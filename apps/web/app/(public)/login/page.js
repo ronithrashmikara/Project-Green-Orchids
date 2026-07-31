@@ -34,7 +34,13 @@ export default function LoginPage() {
         default: router.push('/');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid email or password');
+      const apiError = err.response?.data?.error;
+      if (apiError?.code === 'EMAIL_NOT_VERIFIED') {
+        toast('Verify your email to finish setting up this account.');
+        router.push(`/verify-email?email=${encodeURIComponent(email)}&from=login`);
+        return;
+      }
+      setError(apiError?.message || 'Invalid email or password');
     } finally {
       setLoading(false);
     }

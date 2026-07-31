@@ -25,6 +25,36 @@ test('wrong password and unknown email both return a generic invalid-credentials
   assert.equal(noSuchUser.data.error.code, 'INVALID_CREDENTIALS');
 });
 
+test('an existing unverified registration is directed back to email verification instead of becoming a dead end', async () => {
+  const email = `unverified-${Date.now()}@example.invalid`;
+  const registration = {
+    email,
+    password: 'PendingBuyer1!',
+    name: 'Pending Buyer',
+    business_name: 'Pending Buyer Trading',
+    business_reg_no: 'PENDING-001',
+    phone: '+94 77 123 4567',
+    address_line1: '1 Test Lane',
+    city: 'Colombo',
+  };
+
+  const created = await req(ctx.baseUrl, 'POST', '/auth/register', { body: registration });
+  assert.equal(created.status, 201);
+
+  const loginAttempt = await req(ctx.baseUrl, 'POST', '/auth/login', {
+    body: { email, password: registration.password },
+  });
+  assert.equal(loginAttempt.status, 403);
+  assert.equal(loginAttempt.data.error.code, 'EMAIL_NOT_VERIFIED');
+
+  const repeatedRegistration = await req(ctx.baseUrl, 'POST', '/auth/register', { body: registration });
+  assert.equal(repeatedRegistration.status, 409);
+  assert.equal(repeatedRegistration.data.error.code, 'EMAIL_NOT_VERIFIED');
+
+  const resend = await req(ctx.baseUrl, 'POST', '/auth/verify-email/resend', { body: { email } });
+  assert.equal(resend.status, 200);
+});
+
 test('mutation requests reject missing CSRF headers and untrusted browser origins', async () => {
   const missingHeader = await req(ctx.baseUrl, 'POST', '/auth/login', { body: CREDS.admin, csrf: false });
   assert.equal(missingHeader.status, 403);
