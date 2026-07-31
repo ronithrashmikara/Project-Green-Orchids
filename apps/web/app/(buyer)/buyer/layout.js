@@ -27,16 +27,24 @@ export default function BuyerLayout({ children }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!isLoading && (!user || user.role !== 'TRADE_BUYER')) router.push('/login');
+    if (!isLoading && (!user || user.role !== 'TRADE_BUYER')) router.replace('/login');
   }, [user, isLoading, router]);
+
+  useEffect(() => {
+    if (
+      !isLoading &&
+      user?.role === 'TRADE_BUYER' &&
+      user.status !== 'APPROVED' &&
+      pathname !== '/buyer/pending-approval'
+    ) {
+      router.replace('/buyer/pending-approval');
+    }
+  }, [user, isLoading, pathname, router]);
 
   if (isLoading) return <Spinner className="min-h-screen" />;
   if (!user) return null;
 
-  if (user.status !== 'APPROVED' && pathname !== '/buyer/pending-approval') {
-    router.push('/buyer/pending-approval');
-    return null;
-  }
+  if (user.status !== 'APPROVED' && pathname !== '/buyer/pending-approval') return null;
 
   if (pathname === '/buyer/pending-approval') return children;
 
@@ -52,7 +60,7 @@ export default function BuyerLayout({ children }) {
       subtitle={user.businessName || user.name || user.email}
       cartCount={totalItems}
       actions={
-        <Link href="/buyer/cart" className="relative rounded-2xl border border-green-100 bg-white/80 px-3 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:border-green-300 hover:text-green-800">
+        <Link href="/buyer/cart" prefetch className="relative rounded-2xl border border-green-100 bg-white/80 px-3 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:border-green-300 hover:text-green-800">
           🛒 Cart
           {totalItems > 0 && <span className="absolute -right-2 -top-2 grid h-5 w-5 place-items-center rounded-full bg-green-700 text-[11px] text-white">{totalItems}</span>}
         </Link>

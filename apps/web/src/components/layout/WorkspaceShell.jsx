@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { Menu, X, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -26,6 +27,7 @@ export function WorkspaceShell({
 }) {
   const cfg = workspaceConfig[workspace] || workspaceConfig.admin;
   const active = (href) => pathname === href || pathname?.startsWith(`${href}/`);
+  const router = useRouter();
   const initials = (user?.businessName || user?.name || user?.email || 'Orchids')
     .split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
   const displayName = user?.businessName || user?.name || user?.email || 'User';
@@ -36,7 +38,9 @@ export function WorkspaceShell({
 
   /* Mobile drawer — closed by default, always closes on route change. */
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [navigatingTo, setNavigatingTo] = useState('');
   useEffect(() => { setMobileOpen(false); }, [pathname]);
+  useEffect(() => { setNavigatingTo(''); }, [pathname]);
   useEffect(() => {
     if (!mobileOpen) return;
     const onKey = (e) => { if (e.key === 'Escape') setMobileOpen(false); };
@@ -82,6 +86,21 @@ export function WorkspaceShell({
   // avatarUrl from the API is a root-relative /uploads/... path, proxied straight through
   // by the /uploads/:path* rewrite in next.config.js (same-origin, no CORS headaches).
   const avatarSrc = user?.avatarUrl || null;
+
+  // Warm the buyer/admin workspace routes in the background so sidebar clicks
+  // feel instant instead of waiting for the next screen bundle/data shell.
+  useEffect(() => {
+    navItems
+      .filter((item) => item.href && item.href !== pathname)
+      .forEach((item) => {
+        try { router.prefetch(item.href); } catch { /* prefetch is best effort */ }
+      });
+  }, [navItems, pathname, router]);
+
+  const beginNavigation = (href) => {
+    if (!href || active(href)) return;
+    setNavigatingTo(href);
+  };
 
   const AvatarCircle = ({ size = 'h-9 w-9', textSize = 'text-xs' }) => (
     <button
@@ -136,7 +155,11 @@ export function WorkspaceShell({
             <Link
               key={item.href}
               href={item.href}
+              prefetch
               title={item.label}
+              aria-current={isActive ? 'page' : undefined}
+              aria-busy={navigatingTo === item.href ? 'true' : undefined}
+              onClick={() => beginNavigation(item.href)}
               className={cn(
                 'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all whitespace-nowrap',
                 isCollapsed && 'justify-center px-0',
@@ -157,6 +180,9 @@ export function WorkspaceShell({
               {!isCollapsed && <span className="flex-1">{item.label}</span>}
               {!isCollapsed && item.badge && cartCount > 0 && (
                 <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-violet-500 px-1.5 text-[10px] font-bold text-white">{cartCount}</span>
+              )}
+              {!isCollapsed && navigatingTo === item.href && !isActive && (
+                <span className={cn('h-1.5 w-1.5 shrink-0 animate-pulse rounded-full', cfg.dot)} />
               )}
               {!isCollapsed && isActive && <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', cfg.dot)} />}
             </Link>
@@ -257,6 +283,11 @@ export function WorkspaceShell({
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Top bar */}
         <header className="sticky top-0 z-20 border-b border-slate-200 bg-white shadow-sm">
+          {navigatingTo && (
+            <div className="absolute inset-x-0 top-0 h-0.5 overflow-hidden bg-slate-100">
+              <div className={cn('h-full w-1/2 animate-pulse rounded-r-full', cfg.ring)} />
+            </div>
+          )}
           <div className="flex items-center justify-between gap-4 px-4 py-3.5 md:px-6">
             <div className="flex min-w-0 items-center gap-3">
               <button
