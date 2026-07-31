@@ -7,6 +7,7 @@ const createSchema = z.object({
   items: z.array(z.object({
     product_id: z.coerce.number().int().positive(),
     quantity: z.number().int().min(1).max(MAX_QUANTITY),
+    target_price: z.number().positive().optional(),
     notes: z.string().max(500).optional(),
   })).min(1),
 }).strict();
