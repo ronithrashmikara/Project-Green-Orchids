@@ -56,6 +56,10 @@ const repo = {
   async togglePublish(key, isPublished) {
     await query('UPDATE cms_blocks SET is_published=$1,updated_at=NOW() WHERE key=$2', [isPublished, key]);
   },
+  async remove(key) {
+    const r = await query('DELETE FROM cms_blocks WHERE key = $1 RETURNING *', [key]);
+    return r.rows[0];
+  },
 
   async findAllMedia() {
     return (await query('SELECT * FROM cms_media ORDER BY created_at DESC')).rows;

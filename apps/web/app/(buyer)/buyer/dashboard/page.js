@@ -127,7 +127,7 @@ export default function BuyerDashboardPage() {
         <GlassPanel
           title="Active RFQs"
           subtitle="Your open quote requests."
-          action={<Link href="/buyer/rfqs" className="text-[12px] font-semibold text-sky-600 hover:text-sky-700">View all →</Link>}
+          action={<Link href="/buyer/rfq" className="text-[12px] font-semibold text-sky-600 hover:text-sky-700">View all →</Link>}
         >
           {rfqs.length === 0 ? (
             <EmptyState
@@ -140,7 +140,7 @@ export default function BuyerDashboardPage() {
           ) : (
             <div className="divide-y divide-slate-100">
               {rfqs.map((r) => (
-                <Link key={r.id} href={`/buyer/rfqs/${r.id}`}
+                <Link key={r.id} href={`/buyer/rfq/${r.id}`}
                   className="flex items-center justify-between gap-4 py-3 -mx-5 px-5 rounded-xl transition hover:bg-slate-50">
                   <div className="min-w-0">
                     <p className="text-[13px] font-semibold text-slate-800">{r.rfq_no || `RFQ-${r.id}`}</p>

@@ -17,13 +17,18 @@ const usersService = {
       pagination: { page: pageOpts.page, limit: pageOpts.limit, total, pages: Math.ceil(total / pageOpts.limit) },
     };
   },
+  async listRoles() {
+    return usersRepository.findRoles();
+  },
 
   async createUser(data, actor) {
     const existing = await authRepository.findUserByEmail(data.email);
     if (existing) throw new AppError('EMAIL_EXISTS', 'Email already in use', 409);
 
+    // An admin-supplied password lets the user sign in immediately — no setup
+    // token / setup email. Otherwise fall back to the invitation flow.
     const tempPassword = uuidv4().substring(0, 16);
-    const passwordHash = await bcrypt.hash(tempPassword, 12);
+    const passwordHash = await bcrypt.hash(data.password || tempPassword, 12);
 
     const { query } = require('../../config/db');
     let roleId = data.role_id;
@@ -38,6 +43,14 @@ const usersService = {
       roleId,
     });
 
+    // Audit
+    await writeAudit({
+      actor, action: 'USER_CREATED', entity: 'users', entityId: user.id,
+      after: { email: user.email, name: user.name, role_id: user.role_id },
+    });
+
+    if (data.password) return user;
+
     // Create password setup token
     const setupToken = uuidv4();
     await authRepository.createEmailToken(null, {
@@ -45,12 +58,6 @@ const usersService = {
       token: setupToken,
       type: 'PASSWORD_SETUP',
       expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
-    });
-
-    // Audit
-    await writeAudit({
-      actor, action: 'USER_CREATED', entity: 'users', entityId: user.id,
-      after: { email: user.email, name: user.name, role_id: user.role_id },
     });
 
     if (data.send_setup_email !== false) {

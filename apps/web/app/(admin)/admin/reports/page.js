@@ -26,8 +26,8 @@ export default function ReportsPage() {
     setLoading(true);
     (async () => {
       const params = new URLSearchParams({ view: tab });
-      if (dateFrom) params.set('dateFrom', dateFrom);
-      if (dateTo) params.set('dateTo', dateTo);
+      if (dateFrom) params.set('from', dateFrom);
+      if (dateTo) params.set('to', dateTo);
       const res = await api.get(`/reports?${params}`).catch(() => ({ data: { series: [], summary: {} } }));
       setData(res.data);
       setLoading(false);
@@ -36,9 +36,9 @@ export default function ReportsPage() {
 
   const handleExportCSV = async () => {
     try {
-      const params = new URLSearchParams({ view: tab, format: 'csv' });
-      if (dateFrom) params.set('dateFrom', dateFrom);
-      if (dateTo) params.set('dateTo', dateTo);
+      const params = new URLSearchParams({ format: 'csv' });
+      if (dateFrom) params.set('from', dateFrom);
+      if (dateTo) params.set('to', dateTo);
       const res = await api.get(`/reports/export?${params}`, { responseType: 'blob' });
       const url = URL.createObjectURL(new Blob([res.data]));
       const a = document.createElement('a'); a.href = url; a.download = `report-${tab}.csv`; a.click();

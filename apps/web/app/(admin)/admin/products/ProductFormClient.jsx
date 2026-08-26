@@ -86,7 +86,7 @@ export default function ProductFormPage({ isEdit = false }) {
         toast.success('Product updated');
       } else {
         const payload = {
-          sku: form.sku, name: form.name, description: form.description || undefined,
+          sku: form.sku || undefined, name: form.name, description: form.description || undefined,
           category_id: Number(form.category_id), supplier_id: Number(form.supplier_id),
           product_type: form.product_type, unit_size: form.unit_size || undefined,
           base_price: parseFloat(form.base_price), moq: parseInt(form.moq, 10),
@@ -163,7 +163,7 @@ export default function ProductFormPage({ isEdit = false }) {
       <Card>
         {tab === 'basics' && (
           <div className="space-y-4 grid grid-cols-2 gap-4">
-            <Input label="SKU" value={form.sku} onChange={(e) => update('sku', e.target.value)} disabled={isEdit} required />
+            <Input label="SKU" placeholder={isEdit ? undefined : 'Leave blank to auto-generate'} value={form.sku} onChange={(e) => update('sku', e.target.value)} disabled={isEdit} />
             <Input label="Name" value={form.name} onChange={(e) => update('name', e.target.value)} required />
             <Select label="Type" value={form.product_type} onChange={(e) => update('product_type', e.target.value)} options={PRODUCT_TYPES} />
             <Select label="Category" value={form.category_id} onChange={(e) => update('category_id', e.target.value)} options={categories.map((c) => ({ value: String(c.id), label: c.name }))} />

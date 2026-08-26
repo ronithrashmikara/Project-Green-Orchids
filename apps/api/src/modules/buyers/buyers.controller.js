@@ -32,7 +32,7 @@ const buyersController = {
     try { const r = await buyersService.getRelated(req.params.id, 'invoices', req.query); res.json({ success: true, ...r }); } catch (e) { next(e); }
   },
   async getPayments(req, res, next) {
-    try { const r = await buyersService.getRelated(req.params.id, 'payments', req.query); res.json({ success: true, ...r }); } catch (e) { next(e); }
+    try { const r = await buyersService.getRelated(req.params.id, 'payments', req.query, req.user); res.json({ success: true, ...r }); } catch (e) { next(e); }
   },
   async getRMA(req, res, next) {
     try { const r = await buyersService.getRelated(req.params.id, 'rma', req.query); res.json({ success: true, ...r }); } catch (e) { next(e); }

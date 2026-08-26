@@ -417,8 +417,15 @@ cd apps/web && npm run dev
 
 | Role | Email | Password |
 |------|-------|----------|
-| Admin | admin@korchids.example.invalid | Staff@1234 |
-| Trade Buyer (various) | buyer{1-8}@example.invalid | Buyer@12345 |
+| Admin | admin@example.invalid | Staff@1234 |
+| Finance Officer | finance@example.invalid | Staff@1234 |
+| Inventory Manager | inventory@example.invalid | Staff@1234 |
+| Delivery Coordinator | delivery@example.invalid | Staff@1234 |
+| Sales Manager | sales1@example.invalid / sales2@example.invalid | Staff@1234 |
+| Trade Buyer (various) | buyer{1-8}@example.invalid | Buyer@1234 |
+
+(Audit F12: this table previously listed `admin@korchids.example.invalid` and
+`Buyer@12345`, which do not exist in the seed and locked readers out.)
 
 ---
 

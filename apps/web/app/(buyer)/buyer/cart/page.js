@@ -43,7 +43,10 @@ export default function CartPage() {
   const handleCheckout = async () => {
     setPlacing(true);
     try {
-      const res = await api.post('/orders', { notes: checkoutForm.note || undefined });
+      const res = await api.post('/orders', {
+        po_reference: checkoutForm.poReference || undefined,
+        notes: checkoutForm.note || undefined,
+      });
       toast.success('Order placed successfully!');
       clearCart();
       router.push(`/buyer/orders/${res.data.data.id}`);

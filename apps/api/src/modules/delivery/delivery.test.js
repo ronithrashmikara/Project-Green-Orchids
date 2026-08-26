@@ -23,9 +23,15 @@ before(async () => {
   deliveryUserId = me.data.data.id;
 
   const { data } = await req(ctx.baseUrl, 'GET', '/products/buyer?limit=50', { token: buyerToken });
-  const product = data.products.find((p) => p.status === 'ACTIVE');
+  // Pick a product with REAL availability (stock − reserved ≥ moq) — the newest
+  // ACTIVE product can be fully reserved, which made this fixture order-flaky.
+  const candidates = (data.products || []).filter((p) => p.status === 'ACTIVE'
+    && Number(p.available ?? p.stock ?? 0) >= (p.moq || 1));
+  const product = candidates[0];
+  assert.ok(product, 'catalogue fixture needs at least one available product');
   await req(ctx.baseUrl, 'DELETE', '/cart', { token: buyerToken });
-  await req(ctx.baseUrl, 'POST', '/cart/items', { token: buyerToken, body: { product_id: product.id, quantity: product.moq } });
+  const added = await req(ctx.baseUrl, 'POST', '/cart/items', { token: buyerToken, body: { product_id: product.id, quantity: product.moq } });
+  assert.equal(added.status, 201, 'cart add should succeed for an available product');
   const created = await req(ctx.baseUrl, 'POST', '/orders', { token: buyerToken, body: {} });
   const order = created.data.data;
   await req(ctx.baseUrl, 'PATCH', `/orders/${order.id}/approve`, { token: adminToken, body: {} });

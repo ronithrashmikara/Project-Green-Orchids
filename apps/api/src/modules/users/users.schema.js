@@ -5,6 +5,7 @@ const createUserSchema = z.object({
   name: z.string().trim().min(2).max(100),
   role_id: z.coerce.number().int().positive(),
   send_setup_email: z.boolean().default(true),
+  password: z.string().min(8).max(72).optional(),
 }).strict();
 
 const updateUserSchema = z.object({

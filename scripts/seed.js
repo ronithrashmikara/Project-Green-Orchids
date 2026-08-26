@@ -523,12 +523,12 @@ async function seed() {
     console.log('📦 Seeding 90 days of orders (this may take a while)…');
     const activeBuyers = tradeBuyerUsers.filter(b => b.status === 'ACTIVE');
 
+    // Only statuses the live API/state machine can actually produce
+    // (Audit F12): DRAFT / PROCESSING / READY_TO_SHIP have no producing code
+    // path, and seeded orders in those states rendered broken detail pages.
     const orderStatusFlow = [
-      'DRAFT',
       'PENDING_APPROVAL',
       'APPROVED',
-      'PROCESSING',
-      'READY_TO_SHIP',
       'DISPATCHED',
       'DELIVERED',
     ];
@@ -582,8 +582,8 @@ async function seed() {
 
         // Status-specific adjustments
         const flowIdx = orderStatusFlow.indexOf(status);
-        if (flowIdx >= 2) {
-          // APPROVED or later
+        if (flowIdx >= 1) {
+          // APPROVED or later (APPROVED is index 1 in the 4-state flow)
           approvedBy = staffUsers.get('ADMIN').id;
           approvedAt = new Date(orderDate.getTime() + randomInt(1, 24) * 3600000);
         }
@@ -620,17 +620,25 @@ async function seed() {
             VALUES ($1,$2,$3,$4,'BASE',$5)
           `, [order.id, item.pid, item.qty, item.unitPrice, item.lineTotal]);
 
-          // Stock movement for orders beyond DRAFT
-          if (orderStatus !== 'DRAFT') {
+          // Stock movements mirror the runtime convention (Audit F12):
+          // ORDER_RESERVE (+qty) only once approved; DELIVERED orders also get
+          // an ORDER_FULFILL row, matching delivery-driven stock conversion.
+          if (orderStatus !== 'PENDING_APPROVAL') {
             await pool.query(`
               INSERT INTO stock_movements (product_id, movement_type, qty, ref_table, ref_id, performed_by, occurred_at)
               VALUES ($1,'ORDER_RESERVE',$2,'orders',$3,$4,$5)
-            `, [item.pid, -item.qty, String(order.id), staffUsers.get('INVENTORY_MANAGER').id, created]);
+            `, [item.pid, item.qty, String(order.id), staffUsers.get('INVENTORY_MANAGER').id, created]);
+          }
+          if (orderStatus === 'DELIVERED') {
+            await pool.query(`
+              INSERT INTO stock_movements (product_id, movement_type, qty, ref_table, ref_id, performed_by, occurred_at)
+              VALUES ($1,'ORDER_FULFILL',$2,'orders',$3,$4,$5)
+            `, [item.pid, item.qty, String(order.id), staffUsers.get('DELIVERY_COORDINATOR') ? staffUsers.get('DELIVERY_COORDINATOR').id : staffUsers.get('ADMIN').id, created]);
           }
         }
 
         // ---- 11. Invoices & Payments for approved+ orders ----
-        if (['APPROVED','PROCESSING','READY_TO_SHIP','DISPATCHED','DELIVERED','RETURNED'].includes(orderStatus)) {
+        if (['APPROVED', 'DISPATCHED', 'DELIVERED'].includes(orderStatus)) {
           approvedOrderIds.push(order.id);
 
           const invoiceNo = `INV-${String(order.id).padStart(7, '0')}`;
@@ -640,23 +648,18 @@ async function seed() {
           let invoiceStatus = 'PENDING';
           let paidAmount = 0;
 
-          // Payments based on how far along the flow
-          if (flowIdx >= 6) {
+          // Payments tiering remapped to the 4-state flow (Audit F12):
+          // DELIVERED=3 fully paid · DISPATCHED=2 partial · APPROVED=1 maybe overdue.
+          if (flowIdx >= 3) {
             // DELIVERED — fully paid
             paidAmount = total;
             invoiceStatus = 'PAID';
-          } else if (flowIdx >= 5) {
+          } else if (flowIdx >= 2) {
             // DISPATCHED — partially paid
             paidAmount = Math.round(total * randomInt(40, 90) / 100 * 100) / 100;
             invoiceStatus = paidAmount >= total ? 'PAID' : 'PARTIALLY_PAID';
-          } else if (flowIdx >= 4) {
-            // READY_TO_SHIP — some payment
-            if (faker.number.float({min:0,max:1}) < 0.6) {
-              paidAmount = Math.round(total * randomInt(20, 60) / 100 * 100) / 100;
-              invoiceStatus = 'PARTIALLY_PAID';
-            }
-          } else if (flowIdx >= 2) {
-            // APPROVED/PROCESSING — maybe overdue if old
+          } else if (flowIdx >= 1) {
+            // APPROVED — maybe overdue if old
             if (day > 35 && faker.number.float({min:0,max:1}) < 0.3) {
               invoiceStatus = 'OVERDUE';
             }
@@ -784,6 +787,16 @@ async function seed() {
         }
       }
     }
+    // Reconcile reserved_qty with reality (Audit F12): the random reserved
+    // quantities assigned at product creation never matched open orders. The
+    await pool.query(`
+      UPDATE products p SET reserved_qty = COALESCE((
+        SELECT LEAST(p.stock_qty, SUM(oi.qty))
+        FROM order_items oi
+        JOIN orders o ON o.id = oi.order_id AND o.status IN ('APPROVED','DISPATCHED')
+        WHERE oi.product_id = p.id
+      ), 0)
+    `);
     console.log(`   → ${allOrderIds.length} orders (${approvedOrderIds.length} approved)`);
 
     // ---- 14. Stock alerts ----

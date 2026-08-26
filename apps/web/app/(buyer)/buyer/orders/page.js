@@ -9,7 +9,18 @@ import { Spinner, EmptyState, ErrorState } from '@/components/ui/Spinner';
 import { PageHeader } from '@/components/domain/DashboardUI';
 import { formatLKR, formatDate } from '@/lib/utils';
 
-const STATUSES = ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+const STATUSES = ['PENDING', 'CONFIRMED', 'PROCESSING', 'READY_TO_SHIP', 'SHIPPED', 'DELIVERED', 'RETURNED', 'CANCELLED'];
+
+const STATUS_LABELS = {
+  PENDING: 'Pending',
+  CONFIRMED: 'Confirmed',
+  PROCESSING: 'Processing',
+  READY_TO_SHIP: 'Ready to Ship',
+  SHIPPED: 'Shipped',
+  DELIVERED: 'Delivered',
+  RETURNED: 'Returned',
+  CANCELLED: 'Cancelled',
+};
 
 export default function OrdersListPage() {
   const router = useRouter();
@@ -47,7 +58,7 @@ export default function OrdersListPage() {
       <div className="flex gap-2 flex-wrap">
         <button onClick={() => setFilter('')} className={`px-3 py-1 text-sm rounded-full ${!filter ? 'bg-green-700 text-white' : 'bg-gray-100'}`}>All</button>
         {STATUSES.map((s) => (
-          <button key={s} onClick={() => setFilter(s)} className={`px-3 py-1 text-sm rounded-full ${filter === s ? 'bg-green-700 text-white' : 'bg-gray-100'}`}>{s.replace(/_/g, ' ')}</button>
+          <button key={s} onClick={() => setFilter(s)} className={`px-3 py-1 text-sm rounded-full ${filter === s ? 'bg-green-700 text-white' : 'bg-gray-100'}`}>{STATUS_LABELS[s] || s.replace(/_/g, ' ')}</button>
         ))}
       </div>
 

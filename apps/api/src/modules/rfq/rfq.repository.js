@@ -59,8 +59,12 @@ const repo = {
     );
     return r.rows;
   },
-  async updateStatus(client, id, status) {
-    await (client ? client.query.bind(client) : query)(`UPDATE rfqs SET status = $1, updated_at = NOW() WHERE id = $2`, [status, id]);
+  async setStatus(client, id, status, expectedStatus) {
+    const r = await (client ? client.query.bind(client) : query)(
+      `UPDATE rfqs SET status = $1, updated_at = NOW() WHERE id = $2 AND status = $3 RETURNING *`,
+      [status, id, expectedStatus],
+    );
+    return r.rows[0] || null;
   },
   // Locks the RFQ row for the duration of the transaction so two concurrent
   // conversion requests on the same accepted RFQ serialize instead of both

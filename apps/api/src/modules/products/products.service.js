@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { tx } = require('../../config/db');
 const { AppError } = require('../../middleware/errors');
 const { writeAudit } = require('../../middleware/audit');
@@ -7,6 +8,16 @@ const { enqueueEmail } = require('../../utils/outbox');
 const { stringify } = require('csv-stringify/sync');
 
 const BULK_ACTION_STATUS = { hide: 'INACTIVE', show: 'ACTIVE' };
+
+// Auto-SKU generation (Audit F1 / owner-reported): operators should not have to
+// invent SKUs. Format `<TYPE>-<6 base36 chars>` — readable, type-identifiable,
+// collision-safe (regenerated up to 5 times on the astronomically unlikely dup).
+const SKU_PREFIX = { ORCHID: 'ORC', FERTILIZER: 'FRT', SUPPLY: 'SUP', OTHER: 'GEN' };
+function generateSku(productType) {
+  const prefix = SKU_PREFIX[productType] || SKU_PREFIX.OTHER;
+  const rand = crypto.randomBytes(4).toString('base64').replace(/[^A-Z0-9]/gi, '').toUpperCase();
+  return `${prefix}-${rand.slice(0, 6).padEnd(6, '0')}`;
+}
 
 const service = {
   async bulkAction(ids, action, actor) {
@@ -85,8 +96,19 @@ const service = {
   },
 
   async create(data, actor) {
-    const existing = await repo.findBySku(data.sku);
-    if (existing) throw new AppError('DUPLICATE_SKU', 'A product with this SKU already exists', 409);
+    // Auto-generate the SKU when the operator left it blank (Audit F1). A
+    // client-supplied SKU keeps its duplicate check; a generated one retries a
+    // handful of times before surfacing a conflict.
+    if (!data.sku) {
+      for (let attempt = 0; attempt < 5; attempt++) {
+        data.sku = generateSku(data.product_type);
+        if (!(await repo.findBySku(data.sku))) break;
+        if (attempt === 4) throw new AppError('SKU_GENERATION_FAILED', 'Could not generate a unique SKU, please try again', 409);
+      }
+    } else {
+      const existing = await repo.findBySku(data.sku);
+      if (existing) throw new AppError('DUPLICATE_SKU', 'A product with this SKU already exists', 409);
+    }
     const p = await repo.create(data);
     await writeAudit({ actor, action: 'PRODUCT_CREATED', entity: 'products', entityId: p.id, after: { name: p.name, sku: p.sku, base_price: p.base_price } });
     return p;
@@ -158,7 +180,11 @@ const service = {
     if (!movementType) throw new AppError('INVALID_TYPE', `Unsupported adjustment type: ${data.type}`, 400);
 
     await tx(async (client) => {
-      let newQty = Number(p.stock_qty);
+      // Lock the product row and read quantities inside the transaction so
+      // concurrent adjustments serialize instead of losing updates (Audit F8).
+      const locked = await client.query('SELECT stock_qty, reserved_qty FROM products WHERE id = $1 FOR UPDATE', [productId]);
+      if (!locked.rows.length) throw new AppError('NOT_FOUND', 'Product not found', 404);
+      let newQty = Number(locked.rows[0].stock_qty);
       switch (data.type) {
         case 'RECEIVE': case 'RESTOCK': newQty += data.quantity; break;
         case 'DEDUCT': case 'WRITE_OFF': case 'RESERVATION_CONVERT': newQty -= data.quantity; break;
@@ -166,10 +192,18 @@ const service = {
       if (newQty < 0) throw new AppError('INSUFFICIENT_STOCK', 'Stock cannot go below zero', 400);
 
       await repo.updateStock(client, productId, newQty);
-      const note = `${data.type}: ${p.stock_qty} -> ${newQty}${data.note ? ` — ${data.note}` : ''}`;
-      await repo.createStockMovement({
+      // RESERVATION_CONVERT converts a reservation into physical stock — consume
+      // the reservation too, mirroring dispatchStock semantics (Audit F8).
+      if (data.type === 'RESERVATION_CONVERT') {
+        await client.query(
+          'UPDATE products SET reserved_qty = GREATEST(reserved_qty - $1, 0), updated_at = NOW() WHERE id = $2',
+          [data.quantity, productId],
+        );
+      }
+      const note = `${data.type}: ${locked.rows[0].stock_qty} -> ${newQty}${data.note ? ` — ${data.note}` : ''}`;
+      await repo.createStockMovement(client, {
         product_id: productId, movement_type: movementType, quantity: data.quantity, note,
-        reference_type: data.reference_type, reference_id: data.reference_id, created_by: actor,
+        reference_type: data.reference_type || null, reference_id: data.reference_id || null, created_by: actor,
       });
     });
   },

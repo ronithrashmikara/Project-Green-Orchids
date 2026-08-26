@@ -7,6 +7,12 @@ const usersController = {
       res.json({ success: true, ...result });
     } catch (err) { next(err); }
   },
+  async roles(req, res, next) {
+    try {
+      const roles = await usersService.listRoles();
+      res.json({ success: true, data: roles });
+    } catch (err) { next(err); }
+  },
   async create(req, res, next) {
     try {
       const user = await usersService.createUser(req.body, req.user.id);

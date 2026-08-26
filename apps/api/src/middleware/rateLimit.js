@@ -1,6 +1,10 @@
 const rateLimit = require('express-rate-limit');
 
-const isDevelopment = process.env.NODE_ENV !== 'production';
+// Secure by default (Audit F11/P1-8): elevated development limits apply ONLY
+// when NODE_ENV is explicitly "development". Previously `NODE_ENV !== 'production'`
+// meant a bare `node src/index.js` (NODE_ENV unset) served auth routes at
+// 5000 req/min — effectively no brute-force protection.
+const isDevelopment = ['development', 'test'].includes(process.env.NODE_ENV);
 
 /**
  * Global rate limiter: 300 requests per 15 minutes per IP

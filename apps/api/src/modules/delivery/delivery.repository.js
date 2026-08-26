@@ -81,10 +81,76 @@ async function assign(id, assignedTo, actorId) {
   finally { client.release(); }
 }
 
+// Stock helpers (Audit F2): a reservation made at order approval becomes a
+// physical stock-out when goods actually leave the warehouse (DISPATCHED), with
+// an ORDER_FULFILL ledger row per line. A failed delivery brings the goods
+// back (restock + STOCKTAKE_CORRECTION); cancelling before dispatch releases
+// the reservation (ORDER_RELEASE) without touching physical stock.
+async function convertReservationToStockOut(client, orderId, actorId) {
+  const { rows: items } = await client.query(
+    `SELECT oi.product_id, oi.qty FROM order_items oi WHERE oi.order_id = $1`,
+    [orderId],
+  );
+  for (const item of items) {
+    await client.query(
+      `UPDATE products SET stock_qty = stock_qty - $1, reserved_qty = GREATEST(reserved_qty - $1, 0), updated_at = NOW() WHERE id = $2`,
+      [item.qty, item.product_id],
+    );
+    await client.query(
+      `INSERT INTO stock_movements (product_id, movement_type, qty, ref_table, ref_id, performed_by, note)
+       VALUES ($1, 'ORDER_FULFILL', $2, 'orders', $3, $4, $5)`,
+      [item.product_id, item.qty, String(orderId), actorId || null, `Dispatched to customer`],
+    );
+  }
+}
+
+async function restockFailedDelivery(client, orderId, note, actorId) {
+  const { rows: items } = await client.query(
+    `SELECT oi.product_id, oi.qty FROM order_items oi WHERE oi.order_id = $1`,
+    [orderId],
+  );
+  for (const item of items) {
+    await client.query(
+      `UPDATE products SET stock_qty = stock_qty + $1, updated_at = NOW() WHERE id = $2`,
+      [item.qty, item.product_id],
+    );
+    await client.query(
+      `INSERT INTO stock_movements (product_id, movement_type, qty, ref_table, ref_id, performed_by, note)
+       VALUES ($1, 'STOCKTAKE_CORRECTION', $2, 'orders', $3, $4, $5)`,
+      [item.product_id, item.qty, String(orderId), actorId || null, note ? `Delivery failed — returned to warehouse: ${note}` : 'Delivery failed — returned to warehouse'],
+    );
+  }
+}
+
+async function releaseReservations(client, orderId, actorId) {
+  const { rows: items } = await client.query(
+    `SELECT oi.product_id, oi.qty FROM order_items oi WHERE oi.order_id = $1`,
+    [orderId],
+  );
+  for (const item of items) {
+    await client.query(
+      `UPDATE products SET reserved_qty = GREATEST(reserved_qty - $1, 0), updated_at = NOW() WHERE id = $2`,
+      [item.qty, item.product_id],
+    );
+    await client.query(
+      `INSERT INTO stock_movements (product_id, movement_type, qty, ref_table, ref_id, performed_by, note)
+       VALUES ($1, 'ORDER_RELEASE', $2, 'orders', $3, $4, $5)`,
+      [item.product_id, item.qty, String(orderId), actorId || null, 'Delivery cancelled before dispatch'],
+    );
+  }
+}
+
 async function transition(id, status, { note, podUrl, actorId } = {}) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    // Lock the delivery row so concurrent transitions serialize here and we can
+    // see the true pre-transition status instead of a stale service-layer read.
+    const cur = await client.query('SELECT * FROM deliveries WHERE id = $1 FOR UPDATE', [id]);
+    if (!cur.rows.length) throw Object.assign(new Error('Delivery not found'), { status: 404 });
+    const previousStatus = cur.rows[0].status;
+    const leftWarehouse = ['DISPATCHED', 'IN_TRANSIT', 'DELIVERED'].includes(previousStatus);
+
     const sets = ['status = $1', 'updated_at = NOW()'];
     const vals = [status];
     if (status === 'DISPATCHED') { sets.push('dispatch_date = NOW()'); }
@@ -102,12 +168,30 @@ async function transition(id, status, { note, podUrl, actorId } = {}) {
       `INSERT INTO delivery_events (delivery_id, status, note, actor_id) VALUES ($1, $2, $3, $4)`,
       [id, status, note || null, actorId || null],
     );
-    if (status === 'DISPATCHED' || status === 'DELIVERED') {
+
+    // Order sync is conditional: never resurrect a CANCELLED/CLOSED/REJECTED order
+    // just because a stale delivery row moved (Audit P1-11).
+    const orderId = rows[0].order_id;
+    if (status === 'DISPATCHED') {
       await client.query(
-        `UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2`,
-        [status, rows[0].order_id],
+        `UPDATE orders SET status = 'DISPATCHED', updated_at = NOW() WHERE id = $1 AND status IN ('APPROVED', 'DISPATCHED')`,
+        [orderId],
+      );
+      await convertReservationToStockOut(client, orderId, actorId);
+    }
+    if (status === 'DELIVERED') {
+      await client.query(
+        `UPDATE orders SET status = 'DELIVERED', updated_at = NOW() WHERE id = $1 AND status IN ('APPROVED', 'DISPATCHED')`,
+        [orderId],
       );
     }
+    if (status === 'FAILED' && leftWarehouse) {
+      await restockFailedDelivery(client, orderId, note, actorId);
+    }
+    if (status === 'CANCELLED' && !leftWarehouse) {
+      await releaseReservations(client, orderId, actorId);
+    }
+
     await client.query('COMMIT');
     return rows[0];
   } catch (e) { await client.query('ROLLBACK'); throw e; }

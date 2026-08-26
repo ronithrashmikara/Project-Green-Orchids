@@ -24,7 +24,7 @@ export default function RFQDetailPage() {
     (async () => {
       try {
         const res = await api.get(`/rfqs/${id}`);
-        setRfq(res.data);
+        setRfq(res.data.data ?? res.data); // {success,data} envelope (re-audit fix)
       } catch (err) {
         setError(err.message);
       } finally {

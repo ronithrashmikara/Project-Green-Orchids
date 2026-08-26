@@ -7,6 +7,7 @@ module.exports = {
   create: async (r, res, n) => { try { const d = await s.create(r.body, r.user.id); res.status(201).json({ success: true, data: d }); } catch (e) { n(e); } },
   update: async (r, res, n) => { try { const d = await s.update(r.params.key, r.body, r.user.id); res.json({ success: true, data: d }); } catch (e) { n(e); } },
   togglePublish: async (r, res, n) => { try { const d = await s.togglePublish(r.params.key); res.json({ success: true, data: d }); } catch (e) { n(e); } },
+  remove: async (r, res, n) => { try { const d = await s.removeBlock(r.params.key, r.user.id); res.json({ success: true, data: d }); } catch (e) { n(e); } },
 
   // Media endpoints intentionally return bare bodies (list: {files}, create: the
   // item itself) to match the admin CMS media-library UI's existing contract.

@@ -1,12 +1,15 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { cn, formatLKR } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { StockBand, PriceBlock, TierBadge, StatusBadge } from './StatusBadge';
-
 export function ProductCard({ product, onAddToCart, onView, showPrices = false, tier, className }) {
-  const outOfStock = product.stock != null && product.stock <= 0;
+  // Availability = stock − reserved (API exposes `available`); raw stock alone
+  // lies for fully-reserved products (Audit R-P1-9).
+  const available = product.available != null ? Number(product.available) : (product.stock != null ? Number(product.stock) - Number(product.reserved || 0) : null);
+  const outOfStock = available != null && available <= 0;
   const [imgFailed, setImgFailed] = useState(false);
   return (
     <div className={cn('group overflow-hidden rounded-3xl border border-white/70 bg-white/82 shadow-xl shadow-green-950/5 ring-1 ring-slate-900/5 backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-green-950/10', className)}>
@@ -41,9 +44,9 @@ export function ProductCard({ product, onAddToCart, onView, showPrices = false, 
         </div>
         <div className="flex gap-2 pt-1">
           <Button size="sm" className="flex-1" onClick={() => onView?.(product)} variant="outline">View</Button>
-          <Button size="sm" className="flex-1" onClick={() => onAddToCart?.(product)} disabled={outOfStock}>{outOfStock ? 'Out' : 'Add'}</Button>
+          <Button size="sm" className="flex-1" onClick={() => onAddToCart?.(product)} disabled={outOfStock} title={outOfStock ? 'Out of stock' : undefined}>{outOfStock ? 'Out' : 'Add'}</Button>
         </div>
-        {outOfStock && <p className="text-center text-xs font-semibold text-orange-600"><a href="#" className="underline">Request via RFQ</a></p>}
+        {outOfStock && <p className="text-center text-xs font-semibold text-orange-600"><Link href="/buyer/rfq/new" className="underline">Request via RFQ</Link></p>}
       </div>
     </div>
   );

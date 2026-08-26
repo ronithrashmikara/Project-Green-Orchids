@@ -9,7 +9,7 @@
 // (e.g. '/products/catalogue' before '/products/:id').
 const express = require('express');
 const { query, tx } = require('../../config/db');
-const { requireAuth } = require('../../middleware/auth');
+const { requireAuth, requireApprovedBuyer } = require('../../middleware/auth');
 const { requireRole } = require('../../middleware/rbac');
 
 const router = express.Router();
@@ -130,7 +130,7 @@ router.get('/products/types-and-categories', asyncRoute(async (_req, res) => {
   });
 }));
 
-router.get('/me/summary', requireAuth, asyncRoute(async (req, res) => {
+router.get('/me/summary', requireAuth, requireApprovedBuyer, asyncRoute(async (req, res) => {
   const accountResult = await query(
     `SELECT ta.id,ta.credit_limit,ta.payment_term,bt.name AS tier,bt.discount_rate
      FROM trade_accounts ta LEFT JOIN buyer_tiers bt ON bt.id=ta.tier_id WHERE ta.user_id=$1`,
@@ -174,7 +174,7 @@ async function buyerAccount(userId, executor = query) {
   return result.rows[0];
 }
 
-router.get('/cart', requireAuth, asyncRoute(async (req, res) => {
+router.get('/cart', requireAuth, requireApprovedBuyer, asyncRoute(async (req, res) => {
   const account = await buyerAccount(req.user.id);
   if (!account) return res.json({ items: [] });
   const result = await query(
@@ -192,7 +192,7 @@ router.get('/cart', requireAuth, asyncRoute(async (req, res) => {
   })) });
 }));
 
-router.put('/cart', requireAuth, asyncRoute(async (req, res) => {
+router.put('/cart', requireAuth, requireApprovedBuyer, asyncRoute(async (req, res) => {
   const items = Array.isArray(req.body.items) ? req.body.items : [];
   const saved = await tx(async client => {
     const account = await buyerAccount(req.user.id, client.query.bind(client));

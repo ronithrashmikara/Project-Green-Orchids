@@ -55,7 +55,7 @@ export default function InvoicesListPage() {
     <div className="space-y-6">
       <PageHeader tone="violet" title="Invoices" description="View and manage your invoices and payment status." />
       <div className="flex gap-2">
-        {['', 'PENDING', 'PARTIALLY_PAID', 'PAID', 'OVERDUE'].map((s) => (
+        {['', 'PENDING', 'PARTIALLY_PAID', 'PAID', 'OVERDUE', 'ADJUSTED', 'VOID', 'CANCELLED'].map((s) => (
           <button key={s} onClick={() => setFilter(s)} className={`px-3 py-1 text-sm rounded-full ${filter === s ? 'bg-green-700 text-white' : 'bg-gray-100'}`}>
             {s || 'All'}
           </button>

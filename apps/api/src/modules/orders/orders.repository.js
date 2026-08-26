@@ -20,12 +20,14 @@ const repo = {
   },
 
   async create(client, data) {
-    // Schema columns: order_no, buyer_id, source, status, subtotal, tier_discount_amount, total
+    // Schema columns: order_no, buyer_id, source, status, subtotal, tier_discount_amount, total, rfq_id
+    // po_reference/buyer_note added by migration 0019 (Audit F7).
     const r = await (client ? client.query.bind(client) : query)(
-      `INSERT INTO orders (order_no, buyer_id, source, status, subtotal, tier_discount_amount, total, rfq_id)
-       VALUES ($1,$2,$3,'PENDING_APPROVAL',$4,$5,$6,$7) RETURNING *`,
+      `INSERT INTO orders (order_no, buyer_id, source, status, subtotal, tier_discount_amount, total, rfq_id, po_reference, buyer_note)
+       VALUES ($1,$2,$3,'PENDING_APPROVAL',$4,$5,$6,$7,$8,$9) RETURNING *`,
       [data.order_no, data.buyer_id, data.source || 'CART', data.subtotal,
-       data.tier_discount_amount, data.total, data.rfq_id || null]
+       data.tier_discount_amount, data.total, data.rfq_id || null,
+       data.po_reference || null, data.buyer_note || null]
     );
     return r.rows[0];
   },
@@ -42,7 +44,11 @@ const repo = {
     let where = 'WHERE 1=1'; const params = []; let p = 1;
     if (!isAdmin && buyerId) { where += ` AND o.buyer_id = $${p++}`; params.push(buyerId); }
     if (filters.status) { where += ` AND o.status = $${p++}`; params.push(filters.status); }
-    const ct = await query(`SELECT COUNT(*) FROM orders o ${where}`, params);
+    if (filters.search) {
+      where += ` AND (o.order_no ILIKE $${p++} OR ta.business_name ILIKE $${p++})`;
+      params.push(`%${filters.search}%`, `%${filters.search}%`);
+    }
+    const ct = await query(`SELECT COUNT(*) FROM orders o LEFT JOIN trade_accounts ta ON ta.id = o.buyer_id ${where}`, params);
     const total = parseInt(ct.rows[0].count, 10);
     const sorts = { total: 'o.total', order_date: 'o.created_at', created_at: 'o.created_at' };
     const sortCol = sorts[sort] || 'o.created_at';
@@ -103,16 +109,42 @@ const repo = {
     );
     return r.rows[0] || null;
   },
-  async setRejected(client, id, reason) {
-    await (client ? client.query.bind(client) : query)(
-      `UPDATE orders SET status='REJECTED', rejection_reason=$1, updated_at=NOW() WHERE id=$2`,
-      [reason, id]
+  // Conditional transitions (Audit F3): each write only lands if the order is
+  // still in the expected status, so a concurrent approve/reject/cancel cannot
+  // be silently clobbered. Returns the updated row or null when raced.
+  async setRejected(client, id, reason, expectedStatus = 'PENDING_APPROVAL') {
+    const r = await (client ? client.query.bind(client) : query)(
+      `UPDATE orders SET status='REJECTED', rejection_reason=$1, updated_at=NOW() WHERE id=$2 AND status=$3 RETURNING *`,
+      [reason, id, expectedStatus]
     );
+    return r.rows[0] || null;
   },
-  async setCancelled(client, id, reason, actor) {
+  async setCancelled(client, id, reason, actor, expectedStatus) {
+    const r = await (client ? client.query.bind(client) : query)(
+      `UPDATE orders SET status='CANCELLED', cancel_reason=$1, cancelled_by=$2, cancelled_at=NOW(), updated_at=NOW() WHERE id=$3 AND status=$4 RETURNING *`,
+      [reason, actor, id, expectedStatus]
+    );
+    return r.rows[0] || null;
+  },
+  // Delivery awareness for cancel (Audit F3): if goods already left the
+  // warehouse, cancelling must NOT "release" stock that is physically gone.
+  async deliveryStatusForOrder(client, orderId) {
+    const r = await (client ? client.query.bind(client) : query)(
+      `SELECT status FROM deliveries WHERE order_id = $1`,
+      [orderId]
+    );
+    return r.rows[0]?.status || null;
+  },
+  async cancelPendingDelivery(client, orderId, actorId) {
     await (client ? client.query.bind(client) : query)(
-      `UPDATE orders SET status='CANCELLED', cancel_reason=$1, cancelled_by=$2, cancelled_at=NOW(), updated_at=NOW() WHERE id=$3`,
-      [reason, actor, id]
+      `UPDATE deliveries SET status='CANCELLED', updated_at=NOW()
+       WHERE order_id=$1 AND status IN ('PENDING','ASSIGNED')`,
+      [orderId]
+    );
+    await (client ? client.query.bind(client) : query)(
+      `INSERT INTO delivery_events (delivery_id, status, note, actor_id)
+       SELECT id, 'CANCELLED', 'Order cancelled before dispatch', $2 FROM deliveries WHERE order_id=$1`,
+      [orderId, actorId || null]
     );
   },
 

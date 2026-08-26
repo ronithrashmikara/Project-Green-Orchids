@@ -74,13 +74,20 @@ const VIEWS = {
   },
 };
 
-async function handleDashboard(req, res, next) {
+async function handleDashboard(req, res, next, { filename } = {}) {
   try {
+    // The web date-range pickers send dateFrom/dateTo — accept them as aliases
+    // of from/to so exports actually honor the selected range (R-P1-3).
+    if (req.query.from === undefined && req.query.dateFrom !== undefined) req.query.from = req.query.dateFrom;
+    if (req.query.to === undefined && req.query.dateTo !== undefined) req.query.to = req.query.dateTo;
     const view = VIEWS[req.query.view] || VIEWS.sales;
     const rows = await view.rows(req.query);
     if (req.query.format === 'csv') {
       const csv = stringify(rows, { header: true });
-      res.header('Content-Type', 'text/csv').header('Content-Disposition', `attachment; filename=report-${req.query.view || 'sales'}.csv`).send(csv);
+      const name = filename || `report-${req.query.view || 'sales'}.csv`;
+      res.header('Content-Type', 'text/csv; charset=utf-8')
+        .header('Content-Disposition', `attachment; filename=${name}`)
+        .send(csv);
     } else {
       res.json({ success: true, series: view.series(rows), summary: view.summary(rows) });
     }

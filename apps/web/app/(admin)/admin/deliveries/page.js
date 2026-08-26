@@ -17,6 +17,7 @@ const STATUS_OPTIONS = [
   { value: 'DISPATCHED', label: 'Dispatched' },
   { value: 'IN_TRANSIT', label: 'In Transit' },
   { value: 'DELIVERED', label: 'Delivered' },
+  { value: 'CONFIRMED', label: 'Confirmed' },
   { value: 'FAILED', label: 'Failed' },
   { value: 'CANCELLED', label: 'Cancelled' },
 ];

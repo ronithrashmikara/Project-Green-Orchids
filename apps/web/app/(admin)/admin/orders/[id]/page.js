@@ -67,6 +67,7 @@ export default function AdminOrderDetailPage() {
               { label: 'Date', value: formatDate(order.created_at || order.createdAt, 'yyyy-MM-dd') },
               { label: 'Total', value: formatLKR(order.total || order.totalAmount || 0) },
               { label: 'Payment', value: order.payment_status || order.paymentStatus || payment.status || '—' },
+              { label: 'PO Ref', value: order.po_reference || order.poReference || '—' },
             ]}
           />
         </div>

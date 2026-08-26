@@ -67,7 +67,8 @@ const service = {
     const rfq = await repo.findById(id);
     if (!rfq) throw new AppError('NOT_FOUND', 'RFQ not found', 404);
     assertTransition('RFQ', rfq.status, 'UNDER_REVIEW', role);
-    await repo.updateStatus(null, id, 'UNDER_REVIEW');
+    const updated = await repo.setStatus(null, id, 'UNDER_REVIEW', 'SUBMITTED');
+    if (!updated) throw new AppError('INVALID_TRANSITION', 'RFQ was updated by another request', 409);
     return { ...rfq, status: 'UNDER_REVIEW' };
   },
 
@@ -84,19 +85,24 @@ const service = {
 
     await tx(async (client) => {
       for (const item of data.items) {
-        await repo.updateItemQuote(client, { itemId: item.rfq_item_id, quotedPrice: item.quoted_price, notes: item.notes });
+        await repo.updateItemQuote(client, { itemId: item.rfq_item_id, quotedPrice: item.quoted_price });
       }
-      if (data.quote_expiry) {
-        await repo.setQuoteExpiry(client, id, data.quote_expiry);
-      }
-      await repo.updateStatus(client, id, 'QUOTED');
+      // Persist a default 7-day expiry when the admin quotes without one
+      // (Audit P1-6): the email already promised "7 days" — now the data agrees.
+      const expiry = data.quote_expiry || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      await repo.setQuoteExpiry(client, id, expiry);
+      const quoted = await repo.setStatus(client, id, 'QUOTED', rfq.status);
+      if (!quoted) throw new AppError('INVALID_TRANSITION', 'RFQ was updated by another request', 409);
     });
 
     try {
       const user = await require('../auth/auth.repository').findUserById(rfq.buyer_id);
-      const items = await repo.findItems(id);
-      const totalAmount = items.reduce((s, i) => s + (Number(i.quoted_price) || 0) * i.quantity, 0);
-      await sendMail({ to: user.email, subject: 'RFQ Quoted - Orchids', template: 'rfq_quoted', data: { name: user.name, rfqNumber: rfq.rfq_number, totalAmount: totalAmount.toFixed(2), quoteExpiry: data.quote_expiry || '7 days', rfqUrl: '' } });
+      // Column fixes (Audit P1-3): totals read quoted_unit_price × requested_qty
+      // (the old code summed i.quoted_price × i.quantity — both undefined → 0.00),
+      // and the RFQ number column is rfq_no.
+      const totalAmount = items.reduce((s, i) => s + (Number(i.quoted_unit_price) || 0) * i.requested_qty, 0);
+      const expiryLabel = new Date(data.quote_expiry || Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      await sendMail({ to: user.email, subject: 'RFQ Quoted - Orchids', template: 'rfq_quoted', data: { name: user.name, rfqNumber: rfq.rfq_no, totalAmount: totalAmount.toFixed(2), quoteExpiry: expiryLabel, rfqUrl: '' } });
     } catch (_) {}
   },
 
@@ -104,15 +110,15 @@ const service = {
     const rfq = await repo.findById(id);
     if (!rfq) throw new AppError('NOT_FOUND', 'RFQ not found', 404);
     assertTransition('RFQ', rfq.status, 'DECLINED', role);
-
     await tx(async (client) => {
       await repo.setDeclineReason(client, id, data.reason);
-      await repo.updateStatus(client, id, 'DECLINED');
+      const declined = await repo.setStatus(client, id, 'DECLINED', rfq.status);
+      if (!declined) throw new AppError('INVALID_TRANSITION', 'RFQ was updated by another request', 409);
     });
 
     try {
       const user = await require('../auth/auth.repository').findUserById(rfq.buyer_id);
-      await sendMail({ to: user.email, subject: 'RFQ Declined - Orchids', template: 'rfq_declined', data: { name: user.name, rfqNumber: rfq.rfq_number, reason: data.reason } });
+      await sendMail({ to: user.email, subject: 'RFQ Declined - Orchids', template: 'rfq_declined', data: { name: user.name, rfqNumber: rfq.rfq_no, reason: data.reason } });
     } catch (_) {}
   },
 
@@ -122,7 +128,8 @@ const service = {
     if (!rfq) throw new AppError('NOT_FOUND', 'RFQ not found', 404);
     if (!acct || rfq.buyer_id !== acct.id) throw new AppError('FORBIDDEN', 'Access denied', 403);
     assertTransition('RFQ', rfq.status, 'ACCEPTED', role);
-    await repo.updateStatus(null, id, 'ACCEPTED');
+    const accepted = await repo.setStatus(null, id, 'ACCEPTED', 'QUOTED');
+    if (!accepted) throw new AppError('INVALID_TRANSITION', 'RFQ was updated by another request', 409);
   },
 
   async reject(id, userId, role) {
@@ -131,7 +138,8 @@ const service = {
     if (!rfq) throw new AppError('NOT_FOUND', 'RFQ not found', 404);
     if (!acct || rfq.buyer_id !== acct.id) throw new AppError('FORBIDDEN', 'Access denied', 403);
     assertTransition('RFQ', rfq.status, 'REJECTED', role);
-    await repo.updateStatus(null, id, 'REJECTED');
+    const rejected = await repo.setStatus(null, id, 'REJECTED', 'QUOTED');
+    if (!rejected) throw new AppError('INVALID_TRANSITION', 'RFQ was updated by another request', 409);
   },
 
 };

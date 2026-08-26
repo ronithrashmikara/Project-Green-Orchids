@@ -29,9 +29,12 @@ export default function FinanceDashboardPage() {
       const sp = sumRes.data;
       const ip = invRes.data;
       const pp = payRes.data;
+      const invoices = ip.invoices || ip.data || (Array.isArray(ip) ? ip : []);
+      // Server-side sort param is not guaranteed; enforce the "sorted by due date" claim here.
+      invoices.sort((a, b) => new Date(a.due_date || a.dueDate || 0) - new Date(b.due_date || b.dueDate || 0));
       setData({
         summary:  sp || {},
-        invoices: ip.invoices || ip.data || (Array.isArray(ip) ? ip : []),
+        invoices,
         payments: pp.payments || pp.data || (Array.isArray(pp) ? pp : []),
       });
       setLoading(false);

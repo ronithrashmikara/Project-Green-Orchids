@@ -12,8 +12,11 @@ before(async () => {
   await req(ctx.baseUrl, 'DELETE', '/cart', { token });
 
   const { data } = await req(ctx.baseUrl, 'GET', '/products/buyer?limit=50', { token });
-  product = data.products.find((p) => p.moq > 1 && p.status === 'ACTIVE');
-  assert.ok(product, 'seed data should include at least one ACTIVE product with moq > 1');
+  // Availability (stock − reserved) must cover the MOQ — newest ACTIVE products
+  // can be fully reserved, which made this fixture order-flaky.
+  product = data.products.find((p) => p.moq > 1 && p.status === 'ACTIVE'
+    && Number(p.available ?? p.stock ?? 0) >= p.moq);
+  assert.ok(product, 'seed data should include at least one ACTIVE available product with moq > 1');
 });
 
 after(async () => {

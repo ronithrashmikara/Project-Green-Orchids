@@ -16,21 +16,28 @@ export default function UsersPage() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', role: 'INVENTORY_MANAGER', password: '' });
+  const [form, setForm] = useState({ name: '', email: '', role_id: '', password: '' });
+  const [roles, setRoles] = useState([]);
   const [confirm, setConfirm] = useState({ open: false, action: null, title: '', message: '', variant: 'warning', label: '', identifier: null });
 
   useEffect(() => {
     (async () => {
-      const res = await api.get('/users').catch(() => ({ data: [] }));
+      const [res, rolesRes] = await Promise.all([
+        api.get('/users').catch(() => ({ data: [] })),
+        api.get('/users/roles').catch(() => ({ data: [] })),
+      ]);
       const payload = res.data;
       setUsers(payload.users || payload.data || (Array.isArray(payload) ? payload : []));
+      const roleList = rolesRes.data.data || (Array.isArray(rolesRes.data) ? rolesRes.data : []);
+      setRoles(roleList);
+      setForm((f) => ({ ...f, role_id: f.role_id || roleList[0]?.id || '' }));
       setLoading(false);
     })();
   }, []);
 
   const handleCreate = async () => {
     try {
-      await api.post('/users', form);
+      await api.post('/users', { name: form.name, email: form.email, role_id: Number(form.role_id), password: form.password });
       toast.success('User created');
       setShowCreate(false);
       const res = await api.get('/users');
@@ -80,7 +87,7 @@ export default function UsersPage() {
         eyebrow="Staff"
         title="Staff Management"
         description="Manage internal staff accounts and access."
-        actions={<Button onClick={() => { setForm({ name: '', email: '', role: 'INVENTORY_MANAGER', password: '' }); setShowCreate(true); }}>Create Staff</Button>}
+        actions={<Button onClick={() => { setForm((f) => ({ name: '', email: '', role_id: f.role_id, password: '' })); setShowCreate(true); }}>Create Staff</Button>}
         tone="emerald"
       />
 
@@ -89,9 +96,9 @@ export default function UsersPage() {
           columns={[
             { key: 'name', label: 'Name' },
             { key: 'email', label: 'Email' },
-            { key: 'role', label: 'Role' },
+            { key: 'role_name', label: 'Role' },
             { key: 'status', label: 'Status', render: (v) => <StatusBadge status={v} /> },
-            { key: 'lastLoginAt', label: 'Last Login', render: (v) => formatDate(v) },
+            { key: 'last_login_at', label: 'Last Login', render: (v) => formatDate(v) },
             { key: 'actions', label: '', render: (_, r) => (
               <div className="flex gap-2">
                 <Button size="sm" variant="ghost" onClick={() => handleResetPassword(r.id)}>Reset PW</Button>
@@ -107,11 +114,7 @@ export default function UsersPage() {
         <div className="space-y-4">
           <Input label="Name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required />
           <Input label="Email" type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} required />
-          <Select label="Role" value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))} options={[
-            { value: 'INVENTORY_MANAGER', label: 'Inventory Manager' },
-            { value: 'FINANCE_OFFICER', label: 'Finance Officer' },
-            { value: 'DELIVERY_COORDINATOR', label: 'Delivery Coordinator' },
-          ]} />
+          <Select label="Role" value={form.role_id} onChange={(e) => setForm((f) => ({ ...f, role_id: e.target.value ? Number(e.target.value) : '' }))} options={roles.map((r) => ({ value: r.id, label: r.name }))} />
           <Input label="Temporary Password" type="password" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} required />
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>

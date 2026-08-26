@@ -162,8 +162,10 @@ async create(data) {
     return r.rows[0] || null;
   },
 
-  async createStockMovement(data) {
-    const r = await query(
+  // Accepts an optional tx client (Audit F8): the movement row must commit or
+  // roll back together with the stock change it documents.
+  async createStockMovement(client, data) {
+    const r = await (client ? client.query.bind(client) : query)(
       `INSERT INTO stock_movements (product_id, movement_type, qty, note, ref_table, ref_id, performed_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
       [data.product_id, data.movement_type, data.quantity, data.note, data.reference_type, data.reference_id, data.created_by]

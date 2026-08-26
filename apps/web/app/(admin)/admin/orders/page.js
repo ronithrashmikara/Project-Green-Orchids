@@ -11,13 +11,17 @@ import { GlassPanel, DashboardHero } from '@/components/domain/DashboardUI';
 import { formatLKR, formatDate } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
+// Values must match the orders.status CHECK constraint (migration 0009) and the
+// API state machine — the previous list ("Pending", "Confirmed", "Shipped")
+// matched nothing and silently returned empty results (Audit F9).
 const STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },
-  { value: 'PENDING', label: 'Pending' },
-  { value: 'CONFIRMED', label: 'Confirmed' },
-  { value: 'PROCESSING', label: 'Processing' },
-  { value: 'SHIPPED', label: 'Shipped' },
+  { value: 'PENDING_APPROVAL', label: 'Pending approval' },
+  { value: 'APPROVED', label: 'Approved' },
+  { value: 'REJECTED', label: 'Rejected' },
+  { value: 'DISPATCHED', label: 'Dispatched' },
   { value: 'DELIVERED', label: 'Delivered' },
+  { value: 'CLOSED', label: 'Closed' },
   { value: 'CANCELLED', label: 'Cancelled' },
 ];
 
@@ -38,7 +42,7 @@ export default function AdminOrdersPage() {
       const params = new URLSearchParams({ page: String(page), limit: '20' });
       if (status) params.set('status', status);
       if (search) params.set('search', search);
-      const res = await api.get(`/admin/orders?${params}`).catch(() => api.get(`/orders?adminView=true&${params}`));
+      const res = await api.get(`/orders?adminView=true&${params}`);
       const payload = res.data;
       setOrders(payload.orders || payload.data || (Array.isArray(payload) ? payload : []));
       setTotalPages(payload.pagination?.pages || payload.totalPages || 1);

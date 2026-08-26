@@ -107,11 +107,12 @@ function HomepageTab({ blocks }) {
     setSaving((s) => ({ ...s, [key]: true }));
     try {
       const b = getBlock(key);
-      const payload = { key, type: key, content: JSON.stringify(forms[key]), title: forms[key].headline || forms[key].title || key };
+      // Update payload must never carry `key`; type must be the UPPERCASE enum.
+      const payload = { type: key.toUpperCase(), content: JSON.stringify(forms[key]), title: forms[key].headline || forms[key].title || key };
       if (b.id) {
-        await api.put(`/admin/cms/blocks/${b.id}`, payload).catch(() => api.patch(`/cms/blocks/${key}`, payload));
+        await api.patch(`/cms/blocks/${key}`, payload);
       } else {
-        await api.post('/admin/cms/blocks', payload).catch(() => api.post('/cms/blocks', payload));
+        await api.post('/cms/blocks', { key, ...payload });
       }
       toast.success('Saved');
     } catch { toast.error('Failed to save'); }
@@ -201,11 +202,12 @@ function BrandingTab({ blocks }) {
     setSaving((s) => ({ ...s, [key]: true }));
     try {
       const b = getBlock(key);
-      const payload = { key, type: 'brand', content: JSON.stringify(forms[key]), title: key };
+      // Update payload must never carry `key`; type must be the UPPERCASE enum.
+      const payload = { type: 'BRAND', content: JSON.stringify(forms[key]), title: key };
       if (b.id) {
-        await api.put(`/admin/cms/blocks/${b.id}`, payload).catch(() => api.patch(`/cms/blocks/${key}`, payload));
+        await api.patch(`/cms/blocks/${key}`, payload);
       } else {
-        await api.post('/admin/cms/blocks', payload).catch(() => api.post('/cms/blocks', payload));
+        await api.post('/cms/blocks', { key, ...payload });
       }
       toast.success('Saved');
     } catch { toast.error('Failed to save'); }
@@ -401,13 +403,26 @@ function BlocksTab({ blocks, onRefresh }) {
     setForm({ key: block.key || '', type: block.type || 'text', title: block.title || '', content: block.content || '', ctaText: block.ctaText || '', ctaUrl: block.ctaUrl || '', imageUrl: block.imageUrl || '' });
     setShowEditor(true);
   };
-
   const handleSave = async () => {
     try {
+      // Fold the flat CTA/image fields into the jsonb content blob; update payloads
+      // carry only {type, title, content} — never `key` — and type is UPPERCASE.
+      const extras = {};
+      if (form.ctaText) extras.ctaText = form.ctaText;
+      if (form.ctaUrl) extras.ctaUrl = form.ctaUrl;
+      if (form.imageUrl) extras.imageUrl = form.imageUrl;
+      let content = form.content;
+      if (Object.keys(extras).length > 0) {
+        let parsed = {};
+        try { parsed = content ? JSON.parse(content) : {}; } catch { parsed = {}; }
+        if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) parsed = { value: parsed };
+        content = JSON.stringify({ ...parsed, ...extras });
+      }
+      const payload = { type: String(form.type).toUpperCase(), title: form.title, content };
       if (editing) {
-        await api.put(`/admin/cms/blocks/${editing.id}`, form).catch(() => api.patch(`/cms/blocks/${editing.key}`, form));
+        await api.patch(`/cms/blocks/${editing.key}`, payload);
       } else {
-        await api.post('/admin/cms/blocks', form).catch(() => api.post('/cms/blocks', form));
+        await api.post('/cms/blocks', { key: form.key, ...payload });
       }
       toast.success('Saved');
       setShowEditor(false);
@@ -415,10 +430,9 @@ function BlocksTab({ blocks, onRefresh }) {
       onRefresh();
     } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
   };
-
   const handleDelete = async () => {
     try {
-      await api.delete(`/admin/cms/blocks/${deleteTarget.id}`).catch(() => api.delete(`/cms/blocks/${deleteTarget.key}`));
+      await api.delete(`/cms/blocks/${deleteTarget.key}`);
       toast.success('Deleted');
       onRefresh();
     } catch { toast.error('Failed'); }
@@ -525,6 +539,7 @@ function BlocksTab({ blocks, onRefresh }) {
         onConfirm={handleDelete}
         title="Delete block"
         message={`Delete block "${deleteTarget?.key}"? Pages referencing this key will fall back to defaults.`}
+        requireTypedConfirmation={deleteTarget?.key}
         confirmLabel="Delete"
         variant="danger"
       />
@@ -538,7 +553,7 @@ export default function CMSPage() {
   const [loading, setLoading] = useState(true);
 
   const fetchBlocks = useCallback(async () => {
-    const res = await api.get('/admin/cms/blocks').catch(() => api.get('/cms/blocks').catch(() => ({ data: [] })));
+    const res = await api.get('/cms/blocks').catch(() => ({ data: [] }));
     setBlocks(res.data.blocks || res.data.data || res.data || []);
     setLoading(false);
   }, []);

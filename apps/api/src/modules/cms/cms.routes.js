@@ -11,6 +11,7 @@ r.get('/blocks', optionalAuth, c.list);
 r.get('/blocks/:key', optionalAuth, c.get);
 r.post('/blocks', requireAuth, requirePermission('cms.edit'), validate({ body: createSchema }), c.create);
 r.patch('/blocks/:key', requireAuth, requirePermission('cms.edit'), validate({ body: updateSchema }), c.update);
+r.delete('/blocks/:key', requireAuth, requirePermission('cms.edit'), c.remove);
 r.patch('/blocks/:key/publish', requireAuth, requirePermission('cms.edit'), c.togglePublish);
 r.get('/media', requireAuth, requirePermission('cms.edit'), c.listMedia);
 r.post('/media', requireAuth, requirePermission('cms.edit'), mediaUpload.single('file'), c.createMedia);

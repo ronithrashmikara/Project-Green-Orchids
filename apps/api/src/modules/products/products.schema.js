@@ -4,7 +4,9 @@ const { z } = require('zod');
 // sku, name, description, category_id, supplier_id, product_type, unit_size,
 // base_price, moq, stock_qty, reorder_level, status, bloom_video_url.
 const createSchema = z.object({
-  sku: z.string().trim().min(2).max(50),
+  // sku is OPTIONAL: when the operator leaves it blank the server generates a
+  // type-prefixed, collision-safe SKU (see products.service.create).
+  sku: z.string().trim().min(2).max(50).optional(),
   name: z.string().trim().min(2).max(200),
   description: z.string().max(5000).optional(),
   category_id: z.coerce.number().int().positive(),

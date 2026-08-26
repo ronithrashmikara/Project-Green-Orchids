@@ -47,10 +47,14 @@ export default function NewRFQPage() {
     }
     setSubmitting(true);
     try {
-      const res = await api.post('/rfqs', { lines });
+      const res = await api.post('/rfqs', {
+        items: lines.filter((l) => l.productId).map((l) => ({ product_id: Number(l.productId), quantity: Number(l.quantity) || 1 })),
+      });
       localStorage.removeItem(DRAFT_KEY);
       toast.success('RFQ submitted successfully');
-      router.push(`/buyer/rfq/${res.data.id}`);
+      const newId = res.data?.data?.id ?? res.data?.id;
+      if (!newId) throw new Error('RFQ created but no id returned');
+      router.push(`/buyer/rfq/${newId}`);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to submit RFQ');
     } finally {

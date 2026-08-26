@@ -1,5 +1,6 @@
 const { AppError } = require('../../middleware/errors');
 const repo = require('./cms.repository');
+const { writeAudit } = require('../../middleware/audit');
 
 const service = {
   // includeUnpublished must only ever be true for an authenticated (admin) request — an
@@ -16,6 +17,17 @@ const service = {
   // an admin — always look the block up including drafts.
   async update(key, data, actorId) { await this.get(key, true); return repo.update(key, data, actorId); },
   async togglePublish(key) { const b = await this.get(key, true); await repo.togglePublish(key, !b.is_published); return repo.findByKey(key); },
+  async removeBlock(key, actorId) {
+    // Admin-only route: look the block up including drafts so hidden ones
+    // delete too; missing key surfaces as 404 from get().
+    const existing = await this.get(key, true);
+    await repo.remove(key);
+    await writeAudit({
+      actor: actorId, action: 'CMS_BLOCK_DELETED', entityType: 'cms_blocks',
+      entityId: key, before: { key: existing.key, is_published: existing.is_published },
+    });
+    return { key: existing.key };
+  },
 
   async listMedia() { return repo.findAllMedia(); },
   async createMedia(file, actor) {

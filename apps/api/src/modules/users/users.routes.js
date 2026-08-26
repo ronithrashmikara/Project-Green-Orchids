@@ -10,6 +10,7 @@ router.use(requireAuth, requirePermission('user.manage'));
 
 router.get('/', ctrl.list);
 router.post('/', validate({ body: createUserSchema }), ctrl.create);
+router.get('/roles', ctrl.roles);
 router.get('/:id', ctrl.get);
 router.patch('/:id', validate({ body: updateUserSchema }), ctrl.update);
 router.get('/:id/login-history', ctrl.loginHistory);

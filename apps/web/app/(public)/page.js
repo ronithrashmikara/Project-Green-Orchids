@@ -30,13 +30,16 @@ export default function LandingPage() {
     <main className="relative w-full bg-black text-white">
       {/* ================= HERO (full viewport) ================= */}
       <section className="relative flex min-h-[100svh] flex-col overflow-hidden">
-        {/* Video background */}
+        {/* Video background. `preload="none"` + poster keeps the poster frame
+            as LCP and stops the video from stalling the page load event
+            indefinitely on slow connections (Audit F11/P2-1). */}
         <video
           className="pointer-events-none absolute inset-0 h-full w-full object-cover"
           autoPlay
           loop
           muted
           playsInline
+          preload="none"
           poster="/hero-poster.jpg"
         >
           <source src="/hero.mp4" type="video/mp4" />

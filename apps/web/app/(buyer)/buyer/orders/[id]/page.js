@@ -89,7 +89,7 @@ export default function OrderDetailPage() {
         tone="violet"
         back={{ href: '/buyer/orders', label: 'Back' }}
         title={`Order #${order.order_no || order.id}`}
-        description={formatDate(order.created_at)}
+        description={<> {formatDate(order.created_at)}{order.po_reference ? <> · PO: <span className="font-mono">{order.po_reference}</span></> : null} </>}
         actions={<StatusBadge status={order.status} />}
       />
 
@@ -113,6 +113,7 @@ export default function OrderDetailPage() {
             ))}
           </tbody>
         </table>
+        {order.buyer_note && <p className="mt-3 text-xs text-slate-500">Note: {order.buyer_note}</p>}
         <div className="text-right mt-4 text-lg font-bold">{formatLKR(order.total)}</div>
       </Card>
 

@@ -19,6 +19,7 @@ export default function SecurityPage() {
   const [sessions, setSessions] = useState([]);
   const [lockedAccounts, setLockedAccounts] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
+  const [auditPages, setAuditPages] = useState(1);
   const [settings, setSettings] = useState({ sessionCap: '5', lockoutThreshold: '5', lockoutDuration: '30' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -52,6 +53,7 @@ export default function SecurityPage() {
         case 'audit': {
           const res = await api.get(`/admin/security/audit-logs?page=${page}&limit=20`);
           setAuditLogs(res.data.logs || res.data.data || res.data);
+          setAuditPages(res.data.pagination?.pages || 1);
           break;
         }
         case 'windows': {
@@ -167,7 +169,7 @@ export default function SecurityPage() {
                   { key: 'timestamp', label: 'Time', render: (v) => formatDate(v) },
                   { key: 'details', label: '', render: (_, r) => r.before && r.after ? <Button size="sm" variant="outline" onClick={() => setSelectedAudit(r)}>Diff</Button> : null },
                 ]} rows={auditLogs} />
-                <Pagination page={page} totalPages={10} onChange={setPage} />
+                <Pagination page={page} totalPages={auditPages} onChange={setPage} />
                 {selectedAudit && (
                   <Card><h3 className="text-sm font-medium mb-3">Audit Diff</h3><AuditDiffViewer before={selectedAudit.before} after={selectedAudit.after} /><Button variant="outline" size="sm" onClick={() => setSelectedAudit(null)} className="mt-2">Close</Button></Card>
                 )}

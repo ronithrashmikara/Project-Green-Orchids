@@ -141,18 +141,32 @@ const buyersService = {
     });
   },
 
-  async getRelated(userId, type, queryParams) {
-    const buyer = await buyersRepository.findById(userId);
-    if (!buyer) throw new AppError('NOT_FOUND', 'Buyer not found', 404);
+  async getRelated(userId, type, queryParams, caller) {
     const pageOpts = paginate(queryParams);
 
     let result;
-    switch (type) {
-      case 'orders': result = await buyersRepository.findRelatedOrders(userId, pageOpts); break;
-      case 'invoices': result = await buyersRepository.findRelatedInvoices(userId, pageOpts); break;
-      case 'payments': result = await buyersRepository.findRelatedPayments(userId, pageOpts); break;
-      case 'rma': result = await buyersRepository.findRelatedRMAs(userId, pageOpts); break;
-      default: throw new AppError('INVALID_TYPE', 'Invalid related data type', 400);
+    if (type === 'payments') {
+      // R-P0-7 IDOR fix: payment history is cross-buyer sensitive. Callers
+      // without invoice.view.all are forced onto their OWN trade account —
+      // any other :id gets 403 before anything is read.
+      let accountId = String(userId);
+      if (!caller || !caller.permissions.includes('invoice.view.all')) {
+        const own = await buyersRepository.findTradeAccountIdForUser(caller ? caller.id : null);
+        const self = !!own && caller && (accountId === own || accountId === String(caller.id));
+        if (!self) throw new AppError('FORBIDDEN', 'Access denied', 403);
+        accountId = own;
+      }
+      result = await buyersRepository.findRelatedPayments(accountId, pageOpts);
+    } else {
+      const buyer = await buyersRepository.findById(userId);
+      if (!buyer) throw new AppError('NOT_FOUND', 'Buyer not found', 404);
+
+      switch (type) {
+        case 'orders': result = await buyersRepository.findRelatedOrders(userId, pageOpts); break;
+        case 'invoices': result = await buyersRepository.findRelatedInvoices(userId, pageOpts); break;
+        case 'rma': result = await buyersRepository.findRelatedRMAs(userId, pageOpts); break;
+        default: throw new AppError('INVALID_TYPE', 'Invalid related data type', 400);
+      }
     }
 
     return {

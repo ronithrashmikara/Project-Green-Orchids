@@ -48,6 +48,10 @@ const usersRepository = {
     return result.rows[0];
   },
 
+  async findRoles() {
+    const result = await query('SELECT id, name FROM roles ORDER BY name');
+    return result.rows;
+  },
   async findLoginHistory(userId, { limit, offset }) {
     const countResult = await query('SELECT COUNT(*) FROM login_history WHERE user_id = $1', [userId]);
     const total = parseInt(countResult.rows[0].count, 10);

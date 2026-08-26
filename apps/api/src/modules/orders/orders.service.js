@@ -45,6 +45,9 @@ const service = {
       order = await repo.create(client, {
         order_no: orderNumber, buyer_id: accountId, source: 'CART',
         subtotal, tier_discount_amount: tierDiscountAmount, total,
+        // Audit F7: persist checkout PO reference + buyer note (previously dropped)
+        po_reference: data.po_reference || null,
+        buyer_note: data.notes || null,
       });
       for (const item of orderItems) {
         await repo.createOrderItem(client, {
@@ -135,7 +138,7 @@ const service = {
 
   async list(queryParams, userId, isAdmin) {
     const o = paginate(queryParams);
-    const filters = { status: queryParams.status };
+    const filters = { status: queryParams.status, search: queryParams.search };
     let accountId = null;
     if (!isAdmin) { const acct = await repo.accountIdForUser(userId); accountId = acct ? acct.id : '00000000-0000-0000-0000-000000000000'; }
     const { rows, total } = await repo.findAll(accountId, isAdmin, filters, o);
@@ -240,14 +243,20 @@ const service = {
     if (!order) throw new AppError('NOT_FOUND', 'Order not found', 404);
     assertTransition('ORDER', order.status, 'REJECTED', 'ADMIN');
     await tx(async (client) => {
-      await repo.setRejected(client, id, data.reason);
+      // Lock + conditional write (Audit F3): a concurrent approve() must win
+      // or lose atomically — never half-apply both transitions.
+      const locked = await repo.lockForUpdate(client, id);
+      if (!locked || locked.status !== 'PENDING_APPROVAL') {
+        throw new AppError('INVALID_TRANSITION', `Cannot reject an order in status ${locked ? locked.status : 'UNKNOWN'}`, 409);
+      }
+      const rejected = await repo.setRejected(client, id, data.reason, 'PENDING_APPROVAL');
+      if (!rejected) throw new AppError('INVALID_TRANSITION', 'Order was already processed by another request', 409);
       await writeAudit({ actor, action: 'ORDER_REJECTED', entityType: 'orders', entityId: String(id),
         before: { status: order.status }, after: { status: 'REJECTED', reason: data.reason } }, client);
       await enqueueEmail(client, { recipientEmail: order.buyer_email, recipientUserId: order.buyer_user_id,
         template: 'order_rejected', payload: { orderNumber: order.order_no, reason: data.reason } });
     });
   },
-
   async cancel(id, data, actor) {
     const order = await repo.findById(id);
     if (!order) throw new AppError('NOT_FOUND', 'Order not found', 404);
@@ -257,14 +266,29 @@ const service = {
     assertTransition('ORDER', order.status, 'CANCELLED', role);
 
     await tx(async (client) => {
-      if (order.status === 'APPROVED') {
-        const items = await repo.findItems(id);
-        for (const item of items) {
-          await repo.releaseReservation(client, item.product_id, item.quantity);
-          await repo.createStockMovement(client, {
-            product_id: item.product_id, movement_type: 'ORDER_RELEASE', qty: item.quantity,
-            ref_table: 'orders', ref_id: id, performed_by: actor, note: `Cancel ${order.order_no}`,
-          });
+      // Lock + conditional write (Audit F3): serialize against concurrent
+      // approve/reject/cancel exactly like approve() does.
+      const locked = await repo.lockForUpdate(client, id);
+      if (!locked || !['PENDING_APPROVAL', 'APPROVED'].includes(locked.status)) {
+        throw new AppError('INVALID_TRANSITION', `Cannot cancel an order in status ${locked ? locked.status : 'UNKNOWN'}`, 409);
+      }
+
+      if (locked.status === 'APPROVED') {
+        // If goods already left the warehouse, the reservation was converted to a
+        // physical stock-out at dispatch (Audit F2) — releasing it here would
+        // conjure phantom stock. Only un-dispatched orders release reservations.
+        const deliveryStatus = await repo.deliveryStatusForOrder(client, id);
+        const goodsOut = ['DISPATCHED', 'IN_TRANSIT', 'DELIVERED'].includes(deliveryStatus);
+        if (!goodsOut) {
+          const items = await repo.findItems(id);
+          for (const item of items) {
+            await repo.releaseReservation(client, item.product_id, item.quantity);
+            await repo.createStockMovement(client, {
+              product_id: item.product_id, movement_type: 'ORDER_RELEASE', qty: item.quantity,
+              ref_table: 'orders', ref_id: id, performed_by: actor, note: `Cancel ${order.order_no}`,
+            });
+          }
+          await repo.cancelPendingDelivery(client, id, actor);
         }
 
         // An APPROVED order already has an invoice — cancelling the order
@@ -289,9 +313,10 @@ const service = {
             before: { status: 'PENDING/PARTIALLY_PAID/OVERDUE' }, after: { status: hasPayments ? 'ADJUSTED' : 'CANCELLED', reason: `Order ${order.order_no} cancelled` } }, client);
         }
       }
-      await repo.setCancelled(client, id, data.reason, actor);
+      const cancelled = await repo.setCancelled(client, id, data.reason, actor, locked.status);
+      if (!cancelled) throw new AppError('INVALID_TRANSITION', 'Order was already processed by another request', 409);
       await writeAudit({ actor, action: 'ORDER_CANCELLED', entityType: 'orders', entityId: String(id),
-        before: { status: order.status }, after: { status: 'CANCELLED', reason: data.reason } }, client);
+        before: { status: locked.status }, after: { status: 'CANCELLED', reason: data.reason } }, client);
       await enqueueEmail(client, { recipientEmail: order.buyer_email, recipientUserId: order.buyer_user_id,
         template: 'order_cancelled', payload: { orderNumber: order.order_no } });
     });

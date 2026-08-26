@@ -102,6 +102,12 @@ const buyersRepository = {
     );
   },
 
+  // R-P0-7: resolve a user's trade_accounts.id (payments/invoices key on this
+  // id-space, not users.id) for ownership scoping.
+  async findTradeAccountIdForUser(userId) {
+    const r = await query('SELECT id FROM trade_accounts WHERE user_id = $1', [userId]);
+    return r.rows.length ? String(r.rows[0].id) : null;
+  },
   async findRelatedOrders(userId, { limit, offset }) {
     const countResult = await query('SELECT COUNT(*) FROM orders WHERE buyer_id = $1', [userId]);
     const total = parseInt(countResult.rows[0].count, 10);
