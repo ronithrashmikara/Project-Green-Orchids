@@ -33,12 +33,13 @@ export function CartProvider({ children }) {
   const debounceRef = useRef(null);
   const initialLoadDone = useRef(false);
 
-  // Reconcile with the server cart — only for signed-in users. Guests browse
-  // public pages with a local-only mirror, so we never hit the authed /cart
-  // endpoint (which would 401 and bounce them to /login).
+  // Reconcile with the server cart — only for signed-in TRADE BUYERS. Staff
+  // roles have no cart, so calling /cart for them just spams 403s on every
+  // portal page (re-audit fix).
+  const isBuyer = user?.role === 'TRADE_BUYER';
   useEffect(() => {
     if (authLoading) return;
-    if (!user) {
+    if (!user || !isBuyer) {
       setIsLoading(false);
       initialLoadDone.current = true;
       return;
@@ -61,7 +62,7 @@ export function CartProvider({ children }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [user, authLoading]);
+  }, [user, isBuyer, authLoading]);
 
   // Debounced server sync — only when signed in.
   const syncToServer = useCallback((cartItems) => {

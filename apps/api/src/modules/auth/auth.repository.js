@@ -14,7 +14,8 @@ const authRepository = {
   async findUserByEmail(email) {
     const result = await query(
       `SELECT u.id, u.email, u.password_hash, u.status, u.role_id, u.full_name AS name,
-              u.locked_until, u.avatar_url, r.name AS role, ta.account_status AS trade_account_status
+              u.locked_until, u.avatar_url, u.email_verified_at,
+              r.name AS role, ta.account_status AS trade_account_status
        FROM users u
        LEFT JOIN roles r ON r.id = u.role_id
        LEFT JOIN trade_accounts ta ON ta.user_id = u.id

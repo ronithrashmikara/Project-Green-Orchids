@@ -9,7 +9,9 @@ import { Spinner, EmptyState, ErrorState } from '@/components/ui/Spinner';
 import { PageHeader } from '@/components/domain/DashboardUI';
 import { formatLKR, formatDate } from '@/lib/utils';
 
-const STATUSES = ['PENDING', 'CONFIRMED', 'PROCESSING', 'READY_TO_SHIP', 'SHIPPED', 'DELIVERED', 'RETURNED', 'CANCELLED'];
+// Values match the orders status CHECK constraint (migration 0009) — phantom
+// values (PENDING/CONFIRMED/SHIPPED) filtered nothing (re-audit fix).
+const STATUSES = ['PENDING_APPROVAL', 'APPROVED', 'DISPATCHED', 'DELIVERED', 'CLOSED', 'CANCELLED', 'RETURNED'];
 
 const STATUS_LABELS = {
   PENDING: 'Pending',

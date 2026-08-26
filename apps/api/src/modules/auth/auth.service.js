@@ -144,9 +144,15 @@ const authService = {
       throw new AppError('INVALID_CREDENTIALS', 'Invalid email or password', 401);
     }
 
-    // Check user status
+    // Check user status. PENDING has two distinct causes — give an accurate hint
+    // instead of always telling the user to verify their email (re-audit fix):
+    // unverified → "verify your email"; verified but awaiting admin approval →
+    // "awaiting approval".
     if (user.status !== 'ACTIVE') {
-      throw new AppError('ACCOUNT_INACTIVE', `Account is ${user.status.toLowerCase()}. ${user.status === 'PENDING' ? 'Please verify your email.' : ''}`, 403);
+      const hint = user.status === 'PENDING'
+        ? (user.email_verified_at ? 'Your account is awaiting administrator approval.' : 'Please verify your email first.')
+        : 'Contact support if you believe this is a mistake.';
+      throw new AppError('ACCOUNT_INACTIVE', `Account is ${user.status.toLowerCase()}. ${hint}`, 403);
     }
 
     // Record successful login

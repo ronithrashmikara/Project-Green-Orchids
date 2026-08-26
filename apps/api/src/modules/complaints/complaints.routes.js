@@ -10,6 +10,8 @@ r.get('/queue', requirePermission('complaint.handle'), c.queue);
 r.post('/', requirePermission('complaint.create'), requireApprovedBuyer, validate({ body: createSchema }), c.create);
 r.get('/', requirePermission('complaint.view.own', 'complaint.view.all'), c.list);
 r.get('/:id', requirePermission('complaint.view.own', 'complaint.view.all'), c.get);
-r.post('/:id/messages', requirePermission('complaint.create', 'complaint.handle'), requireApprovedBuyer, validate({ body: messageSchema }), c.addMessage);
+// No requireApprovedBuyer here — staff (complaint.handle) must be able to reply;
+// buyer ownership scoping is enforced in the service (re-audit fix).
+r.post('/:id/messages', requirePermission('complaint.create', 'complaint.handle'), validate({ body: messageSchema }), c.addMessage);
 r.patch('/:id', requirePermission('complaint.handle'), validate({ body: updateSchema }), c.update);
 module.exports = r;
