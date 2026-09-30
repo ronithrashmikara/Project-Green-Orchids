@@ -1,5 +1,6 @@
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
+const { Client } = require('pg');
 const { startServer, req, login } = require('../../test/helpers');
 
 let ctx;
@@ -15,7 +16,7 @@ before(async () => {
 
   await req(ctx.baseUrl, 'DELETE', '/cart', { token: buyerToken });
   const { data } = await req(ctx.baseUrl, 'GET', '/products/buyer?limit=50', { token: buyerToken });
-  product = data.products.find((p) => p.status === 'ACTIVE' && p.available >= p.moq * 2);
+  product = data.products.find((p) => p.status === 'ACTIVE' && p.available >= p.moq * 3);
   assert.ok(product, 'seed data should include an ACTIVE product with enough available stock');
 });
 
@@ -111,4 +112,128 @@ test('regression (FINDING-S01): concurrent approve calls on the same order do no
   const invoices = await req(ctx.baseUrl, 'GET', `/invoices?order_id=${raceOrder.id}`, { token: buyerToken });
   const matching = (invoices.data.data || []).filter((i) => i.order_id === raceOrder.id);
   assert.equal(matching.length, 1, 'exactly one invoice should be created, not two');
+});
+
+// --- Deterministic row-lock tests -------------------------------------------------
+// The race test above fires two requests at once and relies on the scheduler to
+// interleave them. These tests remove the luck: a second, independent Postgres
+// connection takes the order row lock itself, the API request is fired, and the
+// test waits until Postgres reports that request's backend as blocked on that
+// exact lock (pg_blocking_pids) before deciding what the blocker does next.
+
+async function submitFreshOrder() {
+  const add = await req(ctx.baseUrl, 'POST', '/cart/items', {
+    token: buyerToken, body: { product_id: product.id, quantity: product.moq },
+  });
+  assert.equal(add.status, 201);
+  const created = await req(ctx.baseUrl, 'POST', '/orders', { token: buyerToken, body: {} });
+  assert.equal(created.status, 201);
+  assert.equal(created.data.data.status, 'PENDING_APPROVAL');
+  return created.data.data;
+}
+
+async function openBlockerHoldingOrderLock(orderId) {
+  const blocker = new Client({ connectionString: process.env.DATABASE_URL });
+  await blocker.connect();
+  await blocker.query('BEGIN');
+  const { rows } = await blocker.query('SELECT id FROM orders WHERE id = $1 FOR UPDATE', [orderId]);
+  assert.equal(rows.length, 1);
+  const { rows: [{ pid }] } = await blocker.query('SELECT pg_backend_pid() AS pid');
+  return { blocker, pid };
+}
+
+// Resolves with the SQL text the blocked backend is waiting on, so tests can assert
+// *where* the request queued, not just that it did.
+async function waitUntilSomeoneIsBlockedBy(blocker, blockerPid, timeoutMs = 10000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    // The blocker is inside a transaction, and Postgres caches pg_stat_activity per
+    // transaction; drop that snapshot so each poll sees the backends' current queries.
+    await blocker.query('SELECT pg_stat_clear_snapshot()');
+    const { rows } = await blocker.query(
+      'SELECT query FROM pg_stat_activity WHERE $1::int = ANY(pg_blocking_pids(pid))',
+      [blockerPid],
+    );
+    if (rows.length > 0) return rows[0].query;
+    await new Promise((r) => setTimeout(r, 25));
+  }
+  assert.fail('the API request never queued behind the held order row lock');
+}
+
+// The first statement in approve()/reject() that touches the order row inside the
+// transaction is the explicit row lock (orders.repository.js lockForUpdate). If that
+// lock were removed, the request would instead queue later (at the invoice FK check
+// or the conditional UPDATE), after it had already done work on a stale read.
+const ORDER_ROW_LOCK_SQL = /FROM orders WHERE id = \$1 FOR UPDATE/;
+
+function track(promise) {
+  const state = { settled: false };
+  state.promise = promise.finally(() => { state.settled = true; });
+  return state;
+}
+
+test('deterministic lock: reject waits on a held order row lock and completes once it is released', async () => {
+  const lockedOrder = await submitFreshOrder();
+  const { blocker, pid } = await openBlockerHoldingOrderLock(lockedOrder.id);
+  try {
+    const pending = track(req(ctx.baseUrl, 'PATCH', `/orders/${lockedOrder.id}/reject`, {
+      token: adminToken, body: { reason: 'Deterministic lock test rejection' },
+    }));
+
+    const blockedOn = await waitUntilSomeoneIsBlockedBy(blocker, pid);
+    assert.match(blockedOn, ORDER_ROW_LOCK_SQL, 'reject should queue on the explicit order row lock');
+    // Give the request a generous window to (wrongly) finish while the lock is still held.
+    await new Promise((r) => setTimeout(r, 300));
+    assert.equal(pending.settled, false, 'reject must not complete while another transaction holds the order row lock');
+
+    await blocker.query('ROLLBACK');
+    const res = await pending.promise;
+    assert.equal(res.status, 200, 'once the lock is released the queued reject should go through');
+
+    const afterReject = await req(ctx.baseUrl, 'GET', `/orders/${lockedOrder.id}`, { token: adminToken });
+    assert.equal(afterReject.data.data.status, 'REJECTED');
+  } finally {
+    await blocker.query('ROLLBACK').catch(() => {});
+    await blocker.end();
+  }
+});
+
+test('deterministic lock (FINDING-S01): approve re-reads status under the lock and returns 409 if the holder changed it', async () => {
+  const lockedOrder = await submitFreshOrder();
+  const beforeReserve = await req(ctx.baseUrl, 'GET', `/products/${product.id}`, { token: buyerToken });
+  const reservedBefore = beforeReserve.data.data.reserved;
+
+  const { blocker, pid } = await openBlockerHoldingOrderLock(lockedOrder.id);
+  try {
+    // The holder moves the order out of PENDING_APPROVAL but has not committed yet, so
+    // approve()'s pre-transaction read still sees PENDING_APPROVAL and passes the state
+    // check. Only the re-read under the row lock can catch the change.
+    await blocker.query(
+      `UPDATE orders SET status = 'REJECTED', rejection_reason = 'Rejected by the lock holder', updated_at = NOW()
+       WHERE id = $1`,
+      [lockedOrder.id],
+    );
+
+    const pending = track(req(ctx.baseUrl, 'PATCH', `/orders/${lockedOrder.id}/approve`, { token: adminToken, body: {} }));
+
+    const blockedOn = await waitUntilSomeoneIsBlockedBy(blocker, pid);
+    assert.match(blockedOn, ORDER_ROW_LOCK_SQL, 'approve should queue on the explicit order row lock, before any other work');
+    await new Promise((r) => setTimeout(r, 300));
+    assert.equal(pending.settled, false, 'approve must not complete while another transaction holds the order row lock');
+
+    await blocker.query('COMMIT');
+    const res = await pending.promise;
+    assert.equal(res.status, 409, 'approve must see the committed REJECTED status, not its stale pre-lock read');
+    assert.equal(res.data.error.code, 'INVALID_TRANSITION');
+
+    const afterReserve = await req(ctx.baseUrl, 'GET', `/products/${product.id}`, { token: buyerToken });
+    assert.equal(afterReserve.data.data.reserved, reservedBefore, 'no stock may be reserved for an order that was not approved');
+
+    const invoices = await req(ctx.baseUrl, 'GET', `/invoices?order_id=${lockedOrder.id}`, { token: buyerToken });
+    const matching = (invoices.data.data || []).filter((i) => i.order_id === lockedOrder.id);
+    assert.equal(matching.length, 0, 'no invoice may be created for an order that was not approved');
+  } finally {
+    await blocker.query('ROLLBACK').catch(() => {});
+    await blocker.end();
+  }
 });

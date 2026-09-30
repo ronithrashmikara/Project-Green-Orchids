@@ -30,6 +30,6 @@ console.log('\n🧪 Running API integration tests...\n');
 // Concurrency 1: test files share seeded fixtures (buyer1's cart, specific product stock
 // levels, etc.) rather than each spinning up fully isolated data, so two files mutating the
 // same rows at once would be flaky. Sequential is slower but deterministic.
-run(['--test', '--test-concurrency=1', 'src/modules/**/*.test.js'], { cwd: path.resolve(__dirname, '..', 'apps', 'api') });
+run(['--test', '--test-concurrency=1', 'src/**/*.test.js'], { cwd: path.resolve(__dirname, '..', 'apps', 'api') });
 
 console.log('\n✅ All test suites passed.');

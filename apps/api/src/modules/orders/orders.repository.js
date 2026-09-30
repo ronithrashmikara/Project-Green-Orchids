@@ -149,10 +149,14 @@ const repo = {
   },
 
   // Lock product rows; expose BOTH stock_qty and reserved_qty so availability can be computed (Finding 7)
+  // ORDER BY id makes the lock acquisition order deterministic: two approvals whose
+  // orders share products always lock those rows in the same (ascending id) order,
+  // so they queue behind each other instead of deadlocking. Postgres applies the
+  // row locks after the sort, in the order rows are returned.
   async lockProductsForUpdate(client, productIds) {
     const placeholders = productIds.map((_, i) => `$${i + 1}`).join(',');
     const r = await client.query(
-      `SELECT id, stock_qty, reserved_qty, base_price, status FROM products WHERE id IN (${placeholders}) FOR UPDATE`,
+      `SELECT id, stock_qty, reserved_qty, base_price, status FROM products WHERE id IN (${placeholders}) ORDER BY id FOR UPDATE`,
       productIds
     );
     return r.rows;
