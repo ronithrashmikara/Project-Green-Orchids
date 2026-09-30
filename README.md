@@ -106,15 +106,21 @@ line shares use `git blame -w` on surviving source lines.
 |---|---|---|
 | Commits | 167 of 334 (50%) | Sithum Nimhan 56, Nadeera Prabhash 50, Rashandi Tharushika 31, Yasali Sarajika Edirimanna 30 |
 | `apps/api` + `apps/web` surviving lines | ~62% | ~38% |
-| Integration tests and `scripts/run-tests.js` | ~100% | — |
+| Surviving integration tests and `scripts/run-tests.js` | ~100% | earlier tests, since replaced (see below) |
 | `apps/api/migrations` (schema) | ~20% | ~80% |
 | CI workflow, and the order / RFQ / RMA row-lock fixes (2026-07-06) | written by Ronith | — |
 
 Teammates wrote most of the database schema and substantial parts of the API
-and web app, including authentication and RBAC, the catalogue, supplier and
-stock ledger, tier pricing, the buyer dashboard and RFQ workflow, and the
-finance, invoice and RMA screens. The multi-product stock lock
-(`lockProductsForUpdate`) was written by a teammate.
+and web app, including authentication, sessions and RBAC (Sithum), the
+catalogue, supplier and stock ledger and tier pricing (Nadeera), the buyer
+dashboard and RFQ workflow (Yasali), and the finance, invoice and RMA screens
+(Rashandi). The first row locks also came from teammates: Nadeera wrote the
+original order-approval transaction with its `SELECT … FOR UPDATE` stock
+reservation (`lockProductsForUpdate`, 2026-06-15) and an early concurrency
+test, and Sithum wrote the first payment-recording lock. Teammates also wrote
+earlier module tests; the suite that runs today was rebuilt by Ronith on a real
+Postgres harness from 2026-06-17 onward, which is why `git blame` credits
+him with almost all surviving test lines.
 
 ### How this was built
 
