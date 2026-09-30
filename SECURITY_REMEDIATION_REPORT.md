@@ -8,7 +8,7 @@
 
 Project Green received a full security review and remediation pass across the API, web application, database scripts, file handling, payment integration, dependencies, and GitHub Actions configuration. The completed changes remove the known dependency vulnerabilities and code-scanning findings while strengthening access control and protecting sensitive operations.
 
-At completion, the `main` branch passed the production build, all 63 API integration tests, CodeQL analysis, CodeRabbit review, and the repository CI workflow.
+At completion, the `main` branch passed the production build, all 63 API integration tests (the suite has since grown to 69), CodeQL analysis, CodeRabbit review, and the repository CI workflow.
 
 ## Work completed
 

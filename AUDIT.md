@@ -18,7 +18,7 @@ Every finding below cites file:line evidence. Items marked **[LIVE]** were repro
 - Signed double-submit CSRF, Origin allowlist, `X-Requested-With` check (`middleware/csrf.js`); RBAC reloaded from DB per request (`middleware/auth.js`).
 - Upload hardening: UUID filenames, subdir allowlist, path-escape check, extension+MIME+magic-byte validation, 5MB cap (`middleware/upload.js`).
 - Idempotent tracked migrations; append-only triggers for ledger/audit tables; partial + trigram indexes; CHECK constraints on enums.
-- 63 `node:test` integration tests drive the real app against an isolated DB; CI runs them with a real Postgres service.
+- 63 `node:test` integration tests at the time of this audit (64 after the Stripe webhook test; 69 as of 2026-09-30, see README) drive the real app against an isolated DB; CI runs them with a real Postgres service.
 
 ---
 

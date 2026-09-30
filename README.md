@@ -1,12 +1,12 @@
 <div align="center">
 
-![Project Green — Orchids](https://raw.githubusercontent.com/ronithrashmikara/Project-Green-Orchids/main/docs/media/branding/readme-banner.jpg)
+<img src="docs/media/branding/banner.webp" alt="Project Green / Orchids — B2B wholesale platform, team project" width="100%">
 
 # 🌸 Orchids — Project Green
 
 ### B2B Wholesale Orchid Trade Platform
 
-A full-stack B2B wholesale commerce platform for a Sri Lankan orchid exporter — RFQ → quote → order, tier pricing, credit and invoicing, payments, returns (RMA), delivery tracking, sales-manager work distribution, buyer complaints, and six role-focused workspaces.
+A full-stack B2B wholesale commerce platform built by a five-person team around a hypothetical Sri Lankan orchid-exporter scenario — RFQ → quote → order, tier pricing, credit and invoicing, payments, returns (RMA), delivery tracking, sales-manager work distribution, buyer complaints, and six role-focused workspaces.
 
 ![Next.js](https://img.shields.io/badge/Next.js-15_App_Router-000?logo=nextdotjs)
 ![Express](https://img.shields.io/badge/API-Express-000?logo=express)
@@ -14,7 +14,7 @@ A full-stack B2B wholesale commerce platform for a Sri Lankan orchid exporter �
 ![Tailwind CSS](https://img.shields.io/badge/UI-Tailwind_CSS-06B6D4?logo=tailwindcss)
 [![CI](https://github.com/ronithrashmikara/Project-Green-Orchids/actions/workflows/ci.yml/badge.svg)](https://github.com/ronithrashmikara/Project-Green-Orchids/actions/workflows/ci.yml)
 
-**[Status](#status) · [Homepage](#public-homepage) · [Catalogue](#catalogue) · [Dashboards](#dashboards) · [Features](#features) · [Getting Started](#getting-started) · [Testing](#testing) · [Security](#security) · [Demo Accounts](#demo-accounts)**
+**[Status](#status) · [Team](#team-and-contributions) · [Homepage](#public-homepage) · [Catalogue](#catalogue) · [Dashboards](#dashboards) · [Features](#features) · [Getting Started](#getting-started) · [Testing](#testing) · [Security](#security) · [Demo Accounts](#demo-accounts)**
 
 </div>
 
@@ -44,9 +44,10 @@ from code review:
 - [`QA_FULL_SYSTEM_TEST_REPORT_2026-07-04.md`](docs/qa-reports/QA_FULL_SYSTEM_TEST_REPORT_2026-07-04.md) — first strict pass (5 bugs, fixed same day)
 - [`QA_FIX_VERIFICATION_2026-07-03.md`](docs/qa-reports/QA_FIX_VERIFICATION_2026-07-03.md) — second strict pass (10 bugs, including the missing Delivery Coordinator portal, an RMA credit note that never touched its invoice, a locked-accounts panel disconnected from the real lockout mechanism, and a payment-reversal rule that accepted a fabricated approver)
 
-On top of that, **63 `node:test` integration tests** (`npm test`) now drive the
-real Express app against an isolated database, covering every module and
-re-asserting all 15 bugs above so they can't silently regress.
+On top of that, **69 `node:test` tests** (`npm test`) now drive the real
+Express app against an isolated Postgres database and re-assert all 15 bugs
+above so they can't silently regress. Most modules have their own test file;
+`compat`, `complaints` and `sales` do not yet (see Known gaps).
 
 Writing those tests surfaced **8 more real bugs**: `role_id` validated as a
 UUID when the real column is a smallint (staff-user creation was completely
@@ -57,28 +58,70 @@ a seed-script FK-order gap, and a JWT timing race in password-change token
 invalidation. All fixed, all regression-tested.
 
 A later concurrency pass went looking for race conditions directly: firing
-10-way concurrent requests at order approval, RFQ-to-order conversion, and
-RMA approve/receive. All three raced — double-reserved stock, duplicate
-orders, duplicate credits. All three are now serialized with a
-`SELECT ... FOR UPDATE` row lock inside their transaction, each with its own
-dedicated regression test.
+concurrent requests at order approval (2-way), RFQ-to-order conversion and
+RMA approve/receive (10-way each). All three raced — double-reserved stock,
+duplicate orders, duplicate credits. All three are now serialized with a
+`SELECT ... FOR UPDATE` row lock on the parent row plus a status re-check and
+status-conditional update inside the transaction. The lock serializes; the
+re-check is what turns the loser into a clean `409`.
 
-**This isn't a claim that every bug has been found.** It's 63/63 tests green
+The race tests are stochastic (they depend on the scheduler interleaving the
+requests), so two **deterministic lock tests** back them up: a second
+connection holds the order row lock, and the test asserts via
+`pg_blocking_pids` that the API request queues on exactly that lock, then
+releases it and checks the outcome (`200` after a rollback, `409` with no
+reservation or invoice after a committed status change). Multi-product stock
+locks are taken `ORDER BY id`, and `tx()` retries a transaction that Postgres
+aborts as a deadlock victim (`40P01`) or serialization failure (`40001`), with
+its own tests that force a real deadlock.
+
+**This isn't a claim that every bug has been found.** It's 69/69 tests green
 today, with the specific things those tests check enumerated above and in
 [`docs/qa-reports/`](docs/qa-reports/).
 
 CI (GitHub Actions, badge above) runs on every push/PR to `main`/`develop`:
-spins up a real Postgres service container, syntax-checks the API, builds the
-web app, and runs the full test suite. Its first real run caught a bug no
+spins up a real Postgres service container, audits production dependencies
+(`npm audit --omit=dev`), syntax-checks the API, builds the web app, and runs
+the full test suite. Its first real run caught a bug no
 local check had — the web app shipped a `tsconfig.json` for its `@/*` import
 alias despite being 100% JavaScript with no `typescript` dependency, which
 happened to resolve locally by accident but failed outright on a clean
 checkout. Fixed with the correct `jsconfig.json`.
 
 **Known gaps, honestly:**
+- No dedicated test files yet for `compat`, `complaints` or `sales`.
 - Zero automated coverage of the frontend itself — the test suite is API/DB-only; UI regressions still need manual browser QA.
 - Reports/BI, notification retry, credit monitor, and CMS content blocks are smoke-tested, not exhaustively.
 - `scripts/seed.js` / `scripts/migrate.js` are idempotent, but the seeded demo dataset accumulates whatever a session runs against it — reset with a fresh `npm run migrate && npm run seed` for a clean slate.
+
+## Team and contributions
+
+Project Green was a **five-person pre-industry team project** (Apr–Jul 2026).
+Ronith Rashmikara was team lead and lead engineer. Figures below are measured
+from this repository's `main` branch (commit `8c10778`, before the
+2026-09-30 maintenance commits), merging each person's author names by email;
+line shares use `git blame -w` on surviving source lines.
+
+| Measure | Ronith | Teammates |
+|---|---|---|
+| Commits | 167 of 334 (50%) | Sithum Nimhan 56, Nadeera Prabhash 50, Rashandi Tharushika 31, Yasali Sarajika Edirimanna 30 |
+| `apps/api` + `apps/web` surviving lines | ~62% | ~38% |
+| Integration tests and `scripts/run-tests.js` | ~100% | — |
+| `apps/api/migrations` (schema) | ~20% | ~80% |
+| CI workflow, and the order / RFQ / RMA row-lock fixes (2026-07-06) | written by Ronith | — |
+
+Teammates wrote most of the database schema and substantial parts of the API
+and web app, including authentication and RBAC, the catalogue, supplier and
+stock ledger, tier pricing, the buyer dashboard and RFQ workflow, and the
+finance, invoice and RMA screens. The multi-product stock lock
+(`lockProductsForUpdate`) was written by a teammate.
+
+### How this was built
+
+Ronith used
+Claude Code as an AI pair-programmer for part of his work: 52 of his 167
+commits carry a `Co-Authored-By: Claude` trailer. He reviewed every change,
+and the integration tests and CI are the acceptance gate.
 
 ## Public Homepage
 
@@ -200,7 +243,7 @@ own once the API comes back on the next poll.
 
 ### Prerequisites
 
-- Node.js **18+** (pinned via `"engines"` in `package.json`; CI itself runs on Node 22)
+- Node.js **22.12+** (pinned via `"engines"` in `package.json`; the test runner passes a glob to `node --test`, which older Node versions do not expand; CI runs on Node 22)
 - PostgreSQL **14+** (CI runs against `postgres:16`; developed against 18 locally — any 14+ works, the schema uses no version-specific features)
 - (Optional) pnpm / npm
 
@@ -281,7 +324,7 @@ npm test
 
 Runs `scripts/run-tests.js`, which migrates + seeds an isolated `..._test`
 database (derived from `DATABASE_URL`, never the real dev DB) and then runs
-the full `node:test` integration suite (63 tests) sequentially against a real
+the full `node:test` suite (69 tests) sequentially against a real
 instance of the app. No extra test framework to install. The same thing runs
 in CI on every push/PR — see the badge at the top of this file, or
 `.github/workflows/ci.yml`.
